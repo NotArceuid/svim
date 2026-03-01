@@ -1,3 +1,4 @@
+import { navigating } from "$app/state";
 import { type Editor } from "../Editor.svelte.ts";
 import { Settings } from "../Settings.ts";
 import { GapBuffer } from "../Structs/GapBuffer.svelte.ts";
@@ -229,8 +230,7 @@ export class NormalMode implements IEditorModes {
     let current_line = this._editor.Text.elementAtPos(this._editor.LinePos);
     if (!current_line) return;
 
-    let end_char = current_line.value.Span[current_line.value.Span.length - 1];
-    if (end_char === "\n" && this._editor.State !== EditorStateEnum.VISUAL) {
+    if (current_line.value.Span.indexOf("\n") && this._editor.State !== EditorStateEnum.VISUAL) {
       this._editor.CursorPos = current_line.value.Span.length - 2;
     } else {
       this._editor.CursorPos = current_line.value.Span.length - 1;
@@ -347,36 +347,48 @@ export class NormalMode implements IEditorModes {
   }
 
   public paste() {
-    if (!this._editor.TextBuffer)
-      return;
-
-    if (!this._editor.TextBuffer.head)
-      return;
-
     const current_line = this._editor.LinePos;
-    const cursor_pos = this._editor.CursorPos
+    const cursor_pos = this._editor.CursorPos;
 
-    let node = this._editor.TextBuffer.head;
-    while (node.next) {
-      const ln_text = node.value.Span;
-      if (ln_text[ln_text?.length - 1] === "\n") {
-        this.paste_within(current_line, cursor_pos, ln_text);
-      } else {
-        this.paste_multiline(ln_text, node);
+    const currentNode = this._editor.Text.elementAtPos(current_line);
+    if (!currentNode) return;
+
+    const currentText = currentNode.value.Span;
+    const beforeCursor = currentText.substring(0, cursor_pos);
+    const afterCursor = currentText.substring(cursor_pos);
+
+    const paste_content = this._editor.TextBuffer;
+    if (!paste_content) return;
+
+    const lines = paste_content.split('\n');
+
+    if (lines.length === 1) {
+      currentNode.value = new GapBuffer(beforeCursor + lines[0] + afterCursor);
+      this._editor.CursorPos = cursor_pos + lines[0].length;
+    } else {
+      const nextNode = currentNode.next;
+
+      currentNode.value = new GapBuffer(beforeCursor + lines[0]);
+
+      let lastInsertedNode = currentNode;
+      for (let i = 1; i < lines.length - 1; i++) {
+        const newNode = new LinkedListNode<GapBuffer>(new GapBuffer(lines[i]));
+        lastInsertedNode.insert_next(newNode);
+        lastInsertedNode = newNode;
       }
 
-      node = node.next;
+      const lastNode = new LinkedListNode<GapBuffer>(
+        new GapBuffer(lines[lines.length - 1] + afterCursor)
+      );
+      lastInsertedNode.insert_next(lastNode);
+
+      if (nextNode) {
+        lastNode.next = nextNode;
+        nextNode.prev = lastNode;
+      }
+
+      this._editor.LinePos = current_line + (lines.length - 1);
+      this._editor.CursorPos = lines[lines.length - 1].length;
     }
-  }
-
-  private paste_multiline(ln_text: string, node: LinkedListNode<GapBuffer>) {
-    const text = new LinkedListNode<GapBuffer>(new GapBuffer(ln_text));
-    node.insert_next(text);
-  }
-
-  private paste_within(current_line: number, cursor_pos: number, ln_text: string) {
-    this._editor.Text.elementAtPos(current_line)?.value.CreateBufferAt(cursor_pos);
-    this._editor.Text.elementAtPos(current_line)!.value.ActiveZone += ln_text;
-    this._editor.Text.elementAtPos(current_line)?.value.SaveBuffer();
   }
 }

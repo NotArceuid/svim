@@ -1,4 +1,5 @@
 import { TextEditor, type Editor } from "../Editor.svelte.ts";
+import { Settings } from "../Settings.ts";
 import { GapBuffer } from "../Structs/GapBuffer.svelte.js";
 import { LinkedList, LinkedListNode } from "../Structs/LinkedList.svelte.ts";
 import type { Vector2 } from "../Structs/Vector2.svelte.ts";
@@ -57,7 +58,6 @@ export class VisualMode implements IEditorModes {
         ? [this._editor.VisualBufferStart.x, this._editor.VisualBufferEnd.x]
         : [this._editor.VisualBufferEnd.x, this._editor.VisualBufferStart.x];
 
-    this._editor.TextBuffer = new LinkedList<GapBuffer>();
     let text = this._editor.Text.elementAtPos(Math.min(start_y, end_y))!;
     if (start_y === end_y) {
       this.yank_single(text, start_x, end_x);
@@ -70,24 +70,24 @@ export class VisualMode implements IEditorModes {
 
     this.clear_buffer();
     this._editor.State = EditorStateEnum.NORMAL;
-    let node = this._editor.TextBuffer.head;
-    while (node?.next) {
-      node = node.next;
-    }
   }
 
   private yank_multiline(text: LinkedListNode<GapBuffer>, start_x: number, end_x: number, start_y: number, end_y: number) {
     let iter = 0;
+    let copied_text = "";
     while (text.next) {
-      let buff_line = new GapBuffer(text.value.Span);
+      let buff_line = text.value.Span;
       if (iter === 0) {
-        buff_line.Span = buff_line.Span.slice(start_x, buff_line.Span.length);
+        buff_line = buff_line.slice(start_x, buff_line.length);
+        copied_text += buff_line;
       }
       else if (iter === end_y) {
-        buff_line.Span = buff_line.Span.slice(0, end_x + 1);
+        buff_line = buff_line.slice(0, end_x + 1);
+        copied_text += buff_line;
+      } else {
+        copied_text += buff_line;
       }
 
-      this._editor.TextBuffer!.append(buff_line);
       if (iter === end_y) {
         break;
       }
@@ -95,11 +95,22 @@ export class VisualMode implements IEditorModes {
       text = text.next
       iter++;
     }
+
+    if (Settings.SaveToClipboard)
+      navigator.clipboard.writeText(copied_text);
+
+    this._editor.TextBuffer = copied_text;
   }
 
   private yank_single(text: LinkedListNode<GapBuffer>, start_x: number, end_x: number) {
     const new_text = text.value.Span.slice(start_x, end_x);
-    this._editor.TextBuffer?.append(new GapBuffer(new_text));
+    let copied_text = "";
+    copied_text += new_text;
+
+    if (Settings.SaveToClipboard)
+      navigator.clipboard.writeText(copied_text);
+
+    this._editor.TextBuffer = copied_text;
   }
 
   public delete() {

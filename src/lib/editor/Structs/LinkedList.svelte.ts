@@ -14,6 +14,16 @@ export class LinkedListNode<T> {
     this.prev = node;
   }
 
+  public delete() {
+    if (this.prev) {
+      this.prev.next = this.next;
+    }
+
+    if (this.next) {
+      this.next.prev = this.prev;
+    }
+  }
+
   public insert_next(node: LinkedListNode<T>) {
     node.prev = this;
     node.next = this.next;

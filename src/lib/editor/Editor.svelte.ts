@@ -6,7 +6,7 @@ import { Observer } from "./Structs/Observer.svelte.ts";
 
 export class Editor {
   public Text = $state(new LinkedList<GapBuffer>());
-  public TextBuffer: LinkedList<GapBuffer> | null = $state(null);
+  public TextBuffer: string = $state("");
 
   public UndoStack: undefined;
   public CurrentLine: LinkedListNode<GapBuffer> | null;

@@ -46,7 +46,6 @@ export class InsertMode implements IEditorModes {
     let node = new LinkedListNode(new GapBuffer(this.get_indentation_spaces().repeat(whitespace_count == 0 ? 1 : whitespace_count)));
     curr_line?.insert_prev(node);
     this._editor.CursorPos = Math.max(node.value.Span.length - 1, 0);
-    this._editor.LinePos = this._editor.LinePos;
     this._editor.CurrentLine = this._editor.CurrentLine?.prev ?? null;
 
     this.insert_start()
@@ -109,21 +108,53 @@ export class InsertMode implements IEditorModes {
 
     switch (key) {
       case "Backspace":
-        if (this._editor.CurrentLine.value.ActiveZone)
-          this._editor.CurrentLine.value.ActiveZone = this._editor.CurrentLine.value.ActiveZone.slice(0, -1);
+        this.backspace();
+        break;
+      case "Enter":
+        this.enter();
         break;
       case "Tab":
         this._editor.CurrentLine.value.ActiveZone += this.get_indentation_spaces();
+        if (this._editor.InsertBefore)
+          this._editor.CursorPos = this._editor.CurrentLine.value.ActiveZone!.length;
+        else
+          this._editor.CursorPos = this._editor.CurrentLine.value.ActiveZone!.length - 1;
         break;
       default:
         this._editor.CurrentLine.value.ActiveZone += key;
+        if (this._editor.InsertBefore)
+          this._editor.CursorPos = this._editor.CurrentLine.value.ActiveZone!.length;
+        else
+          this._editor.CursorPos = this._editor.CurrentLine.value.ActiveZone!.length - 1;
         break;
     }
+  }
 
-    if (this._editor.InsertBefore)
-      this._editor.CursorPos = this._editor.CurrentLine.value.ActiveZone!.length;
-    else
-      this._editor.CursorPos = this._editor.CurrentLine.value.ActiveZone!.length - 1;
+  private backspace() {
+    if (!this._editor.CurrentLine)
+      return;
+
+    if (this._editor.CursorPos === 0) {
+      let ln_text = this._editor.CurrentLine.value.Span;
+
+      if (this._editor.CurrentLine.prev) {
+        this._editor.CurrentLine.prev.value.Span += ln_text;
+      }
+
+      this._editor.CurrentLine.delete();
+      this._editor.CurrentLine = this._editor.CurrentLine.next;
+      return;
+    }
+
+    if (this._editor.CurrentLine.value.ActiveZone) {
+      this._editor.CurrentLine.value.ActiveZone = this._editor.CurrentLine.value.ActiveZone.slice(0, -1);
+    }
+
+    this._editor.CursorPos--;
+  }
+
+  private enter() {
+
   }
 
   private get_indentation_spaces(): string {

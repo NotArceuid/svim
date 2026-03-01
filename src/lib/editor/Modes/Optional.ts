@@ -14,4 +14,12 @@ export class Optional implements IEditorModes {
   public yank_line() {
 
   }
+
+  public delete() {
+
+  }
+
+  public delete_line() {
+
+  }
 }
