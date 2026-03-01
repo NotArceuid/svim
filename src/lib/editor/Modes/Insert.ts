@@ -12,8 +12,6 @@ export class InsertMode implements IEditorModes {
 
   // o
   public insert_line_below() {
-    this.insert_end();
-
     let curr_line = this._editor.CurrentLine;
     let whitespace_count = 0;
     for (let i = 0; i < (curr_line?.value.Span.length ?? 0); i++) {
@@ -29,12 +27,11 @@ export class InsertMode implements IEditorModes {
     curr_line?.insert_next(node);
     this._editor.LinePos++;
     this._editor.CursorPos = Math.max(node.value.Span.length - 1, 0);
+    this.insert_start()
   }
 
   // O
   public insert_line_above() {
-    this.insert_end();
-
     let curr_line = this._editor.CurrentLine;
     let whitespace_count = 0;
     for (let i = 0; i < (curr_line?.value.Span.length ?? 0); i++) {
@@ -51,6 +48,8 @@ export class InsertMode implements IEditorModes {
     this._editor.CursorPos = Math.max(node.value.Span.length - 1, 0);
     this._editor.LinePos = this._editor.LinePos;
     this._editor.CurrentLine = this._editor.CurrentLine?.prev ?? null;
+
+    this.insert_start()
   }
 
   // i

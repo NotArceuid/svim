@@ -21,6 +21,7 @@ export class VisualMode implements IEditorModes {
     this._editor.State = EditorStateEnum.VISUAL;
 
     this.VisualBufferStart = { x: this._editor.CursorPos, y: this._editor.LinePos };
+    this.VisualBufferEnd = { x: this._editor.CursorPos, y: this._editor.LinePos };
     this._cursor_pos_cache = { x: this._editor.CursorPos, y: this._editor.LinePos };
   }
 
@@ -46,56 +47,41 @@ export class VisualMode implements IEditorModes {
   }
 
   public yank() {
-    const start_y = Math.min(this.VisualBufferStart.y, this.VisualBufferEnd.y);
-    const end_y = Math.max(this.VisualBufferStart.y, this.VisualBufferEnd.y);
-    const start_x =
-      this._editor.VisualBufferStart.y < this._editor.VisualBufferEnd.y ||
-        (this._editor.VisualBufferStart.y === this._editor.VisualBufferEnd.y &&
-          this._editor.VisualBufferStart.x < this._editor.VisualBufferEnd.x)
-        ? this._editor.VisualBufferStart.x
-        : this._editor.VisualBufferEnd.x;
-    const end_x =
-      this._editor.VisualBufferStart.y < this._editor.VisualBufferEnd.y ||
-        (this._editor.VisualBufferStart.y === this._editor.VisualBufferEnd.y &&
-          this._editor.VisualBufferStart.x < this._editor.VisualBufferEnd.x)
-        ? this._editor.VisualBufferEnd.x
-        : this._editor.VisualBufferStart.x;
+    const [start_y, end_y] = [
+      Math.min(this._editor.VisualBufferStart.y, this._editor.VisualBufferEnd.y),
+      Math.max(this._editor.VisualBufferStart.y, this._editor.VisualBufferEnd.y),
+    ];
+
+    const [start_x, end_x] =
+      start_y === this._editor.VisualBufferStart.y
+        ? [this._editor.VisualBufferStart.x, this._editor.VisualBufferEnd.x]
+        : [this._editor.VisualBufferEnd.x, this._editor.VisualBufferStart.x];
 
     this._editor.TextBuffer = new LinkedList<GapBuffer>();
-    let text = this._editor.Text.elementAtPos(start_y);
-    for (let i = 0; i < end_y; i++) {
-      if (!text) {
+    let text = this._editor.Text.elementAtPos(start_y)!;
+    let iter = 0;
+    while (text.next) {
+      let buff_line = new GapBuffer(text.value.Span);
+      if (iter === 0) {
+        buff_line.Span = buff_line.Span.slice(0, end_x);
+      }
+      else if (iter === end_y - 1) {
+        buff_line.Span = buff_line.Span.slice(start_x, buff_line.Span.length);
+      }
+
+      this._editor.TextBuffer!.append(buff_line);
+      if (iter === end_y) {
         break;
       }
 
-      let lines = text.value.Span.split(/(?<=\n)/);
-      lines.forEach((line, idx) => {
-        let buff_line = new GapBuffer(line);
-        if (idx === 0) {
-          buff_line.Span = buff_line.Span.slice(0, end_x);
-        }
-        else if (idx === end_y - 1) {
-          buff_line.Span = buff_line.Span.slice(start_x, buff_line.Span.length);
-        }
-
-        this._editor.TextBuffer!.append(buff_line);
-      })
-
-      if (text?.next) {
-        text = text?.next;
-      }
+      text = text.next
+      iter++;
     }
 
     this._editor.CursorPos = this._cursor_pos_cache.x;
     this._editor.LinePos = this._cursor_pos_cache.y;
 
     this.clear_buffer();
-    this.end_track();
-
     this._editor.State = EditorStateEnum.NORMAL;
-  }
-
-  public get_text_from_buf() {
-
   }
 }

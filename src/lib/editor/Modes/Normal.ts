@@ -1,5 +1,7 @@
 import { type Editor } from "../Editor.svelte.ts";
 import { Settings } from "../Settings.ts";
+import { GapBuffer } from "../Structs/GapBuffer.svelte.ts";
+import { LinkedListNode } from "../Structs/LinkedList.svelte.ts";
 import { EditorStateEnum, type IEditorModes } from "./EditorModes.ts";
 
 export class NormalMode implements IEditorModes {
@@ -345,6 +347,25 @@ export class NormalMode implements IEditorModes {
   }
 
   public paste() {
+    if (!this._editor.TextBuffer)
+      return;
 
+    const current_line = this._editor.LinePos;
+    const cursor_pos = this._editor.CursorPos
+
+    let node = this._editor.TextBuffer.head;
+    while (node?.next) {
+      const ln_text = node.value.Span;
+      if (ln_text[ln_text?.length - 1] === "\n") {
+        const text = new LinkedListNode<GapBuffer>(new GapBuffer(ln_text));
+        node.insert_next(text);
+      } else {
+        this._editor.Text.elementAtPos(current_line)?.value.CreateBufferAt(cursor_pos);
+        this._editor.Text.elementAtPos(current_line)!.value.ActiveZone += ln_text;
+        this._editor.Text.elementAtPos(current_line)?.value.SaveBuffer();
+      }
+
+      node = node.next;
+    }
   }
 }
