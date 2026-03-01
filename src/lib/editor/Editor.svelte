@@ -6,32 +6,38 @@
   import { BufferTypeEnum } from "./Structs/GapBuffer.svelte.ts";
 
   function should_highlight(line_pos: number, char_pos: number): boolean {
-    if (
-      char_pos > TextEditor.VisualBufferStart[1] &&
-      char_pos < TextEditor.VisualBufferEnd[1] &&
-      TextEditor.VisualBufferStart[0] === TextEditor.VisualBufferEnd[0]
-    ) {
-      return true;
+    const startY = Math.min(
+      TextEditor.VisualBufferStart.y,
+      TextEditor.VisualBufferEnd.y,
+    );
+    const endY = Math.max(
+      TextEditor.VisualBufferStart.y,
+      TextEditor.VisualBufferEnd.y,
+    );
+
+    const startX =
+      TextEditor.VisualBufferStart.y < TextEditor.VisualBufferEnd.y ||
+      (TextEditor.VisualBufferStart.y === TextEditor.VisualBufferEnd.y &&
+        TextEditor.VisualBufferStart.x < TextEditor.VisualBufferEnd.x)
+        ? TextEditor.VisualBufferStart.x
+        : TextEditor.VisualBufferEnd.x;
+
+    const endX =
+      TextEditor.VisualBufferStart.y < TextEditor.VisualBufferEnd.y ||
+      (TextEditor.VisualBufferStart.y === TextEditor.VisualBufferEnd.y &&
+        TextEditor.VisualBufferStart.x < TextEditor.VisualBufferEnd.x)
+        ? TextEditor.VisualBufferEnd.x
+        : TextEditor.VisualBufferStart.x;
+
+    if (startY === endY) {
+      return line_pos === startY && char_pos >= startX && char_pos <= endX;
     }
 
-    if (
-      char_pos > TextEditor.VisualBufferStart[1] &&
-      line_pos === TextEditor.VisualBufferStart[0]
-    ) {
-      return true;
-    }
-
-    if (
-      char_pos < TextEditor.VisualBufferEnd[1] &&
-      line_pos === TextEditor.VisualBufferEnd[0]
-    ) {
-      return true;
-    }
-
-    if (
-      line_pos >= TextEditor.VisualBufferStart[0] &&
-      line_pos <= TextEditor.VisualBufferEnd[0]
-    ) {
+    if (line_pos === startY) {
+      return char_pos >= startX;
+    } else if (line_pos === endY) {
+      return char_pos <= endX;
+    } else if (line_pos > startY && line_pos < endY) {
       return true;
     }
 
@@ -42,14 +48,14 @@
     if (TextEditor.CursorPos == char_pos && TextEditor.LinePos == line_pos) {
       if (TextEditor.State === EditorStateEnum.INSERT) {
         return `cursor-edit ${TextEditor.InsertBefore ? "cursor-edit-before" : "cursor-edit-after"}`;
-      } else if (
-        TextEditor.State === EditorStateEnum.VISUAL &&
-        should_highlight(line_pos, char_pos)
-      ) {
-        return "cursor-visual";
       } else {
         return "cursor-normal";
       }
+    } else if (
+      TextEditor.State === EditorStateEnum.VISUAL &&
+      should_highlight(line_pos, char_pos)
+    ) {
+      return "cursor-visual";
     }
 
     return "";
@@ -98,6 +104,7 @@
       </span>
     </div>
   {/each}
+  <span>{TextEditor.State}</span>
 </div>
 
 <style>
@@ -139,7 +146,8 @@
   }
 
   .cursor-visual {
-    background-color: 666;
+    background-color: #666;
+    color: white;
   }
 
   .cursor-edit-before::before {

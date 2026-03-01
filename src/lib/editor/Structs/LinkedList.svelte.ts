@@ -201,4 +201,8 @@ export class LinkedList<T> implements Iterable<T> {
       curr = curr.next;
     }
   }
+
+  clear() {
+    this.head = null;
+  }
 }

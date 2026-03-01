@@ -9,6 +9,4 @@ export enum EditorStateEnum {
   COMMAND = "COMMAND"
 }
 
-export interface IEditorModes {
-
-}
+export interface IEditorModes { }

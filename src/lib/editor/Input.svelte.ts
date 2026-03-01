@@ -2,7 +2,7 @@ import { TextEditor, type Editor } from "./Editor.svelte.ts";
 import { EditorStateEnum } from "./Modes/EditorModes.ts";
 import { InsertMode } from "./Modes/Insert.ts";
 import { NormalMode } from "./Modes/Normal.ts";
-import { VisualMode } from "./Modes/Visual.ts";
+import { VisualMode } from "./Modes/Visual.svelte.ts";
 import type { Vector2 } from "./Structs/Vector2.svelte.ts";
 
 export class InputMapper {
@@ -79,6 +79,7 @@ export class InputMapper {
     });
 
     this.set("n", "v", () => this.Visual.start_track());
+    this.set("v", "y", () => this.Visual.yank())
 
     editor.EditorStateEvent.Add((state) => {
       switch (state) {
@@ -142,9 +143,13 @@ export class InputMapper {
   }
 
   private HandleNormalMode(key: string): boolean {
-    //    if (key === ";" || key === ",") {
-    //      this.Normal.stop_find();
-    //    }
+    if (this.Normal.IsFinding) {
+      if (key === ";" || key === ",") {
+        this.Normal.stop_find();
+      }
+    } else {
+      this.Normal.stop_find();
+    }
 
     if (this.InputBuffer === "0") {
       let val = this.NormalInputMap.get("0");
@@ -155,7 +160,8 @@ export class InputMapper {
 
     if (!key.match("[0-9]")) {
       let diff = this.TryMultiAction();
-      this.Visual.update_buffer(diff);
+      if (this.Visual.Tracking)
+        this.Visual.update_buffer(diff);
     }
 
     return true;
@@ -172,8 +178,6 @@ export class InputMapper {
 
     if (this.Visual.Tracking) {
       this.HandleNormalMode(key);
-      console.log(this.Visual.VisualBufferStart)
-      console.log(this.Visual.VisualBufferEnd)
     }
 
     return true;
@@ -184,16 +188,16 @@ export class InputMapper {
     let count = this.InputBuffer.match("[0-9]*");
 
     let cursor_dif: Vector2 = {
-      x: TextEditor.LinePos,
-      y: TextEditor.CursorPos
+      x: TextEditor.CursorPos,
+      y: TextEditor.LinePos
     }
 
     if (count?.[0] === "") {
       let func = this.NormalInputMap.get(this.InputBuffer);
       if (func) {
         func();
-        cursor_dif.x = TextEditor.LinePos - cursor_dif.x;
-        cursor_dif.y = TextEditor.CursorPos - cursor_dif.y;
+        cursor_dif.x = TextEditor.CursorPos - cursor_dif.x;
+        cursor_dif.y = TextEditor.LinePos - cursor_dif.y;
 
         this.InputBuffer = "";
       }
@@ -204,8 +208,8 @@ export class InputMapper {
         for (let i = 0; i < Number(count[0]); i++) {
           func();
 
-          cursor_dif.x = TextEditor.LinePos - cursor_dif.x;
-          cursor_dif.y = TextEditor.CursorPos - cursor_dif.y;
+          cursor_dif.x = TextEditor.CursorPos - cursor_dif.x;
+          cursor_dif.y = TextEditor.LinePos - cursor_dif.y;
         }
       }
 

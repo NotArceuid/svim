@@ -6,6 +6,8 @@ import { Observer } from "./Structs/Observer.svelte.ts";
 
 export class Editor {
   public Text = $state(new LinkedList<GapBuffer>());
+  public TextBuffer: LinkedList<GapBuffer> | null = $state(null);
+
   public UndoStack: undefined;
   public CurrentLine: LinkedListNode<GapBuffer> | null;
   public CursorPos: number = $state(0);
@@ -13,6 +15,7 @@ export class Editor {
   public get LinePos() {
     return this._linePos;
   }
+
   public set LinePos(val: number) {
     let num_diff = val - this.LinePos;
     for (let i = 0; i < Math.abs(this.LinePos - val); i++) {
@@ -38,7 +41,7 @@ export class Editor {
 
   private _inputMapper: InputMapper;
   constructor(text: string) {
-    let lines = text.split("\n");
+    let lines = text.split(/(?<=\n)/);
     lines.forEach((line) => {
       let buff_line = new GapBuffer(line);
       this.Text.append(buff_line);

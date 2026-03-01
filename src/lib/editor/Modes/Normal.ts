@@ -14,6 +14,13 @@ export class NormalMode implements IEditorModes {
   }
 
   public right() {
+    if (this._editor.CurrentLine?.value.Span[this._editor.CursorPos + 1] === "\n" && this._editor.State !== EditorStateEnum.VISUAL) {
+      this._editor.CursorPos = Math.min(
+        this._editor.CurrentLine!.value.Span.length - 2,
+        this._editor.CursorPos + 1);
+      return;
+    }
+
     this._editor.CursorPos = Math.min(
       this._editor.CurrentLine!.value.Span.length - 1,
       this._editor.CursorPos + 1);
@@ -25,6 +32,7 @@ export class NormalMode implements IEditorModes {
       return;
 
     let current_line = this._editor.CurrentLine;
+
     let prev_line = current_line?.prev;
     let prev_line_length = prev_line?.value.Span.length ?? 0;
 
@@ -59,10 +67,10 @@ export class NormalMode implements IEditorModes {
       return;
 
     let current_line = this._editor.CurrentLine;
+
     let next_line = current_line?.next;
     let next_line_length = next_line?.value.Span.length ?? 0;
 
-    console.log(next_line_length)
     if (this._editor.CursorPos > this._cursor_pos_ref && next_line_length > this._editor.CursorPos) {
       this._cursor_pos_ref = this._editor.CursorPos;
     }
@@ -216,7 +224,16 @@ export class NormalMode implements IEditorModes {
 
   // $
   public end_line() {
-    this._editor.CursorPos = (this._editor.Text.elementAtPos(this._editor.LinePos)?.value.Span.length ?? 0) - 1;
+    let current_line = this._editor.Text.elementAtPos(this._editor.LinePos);
+    if (!current_line) return;
+
+    let end_char = current_line.value.Span[current_line.value.Span.length - 1];
+    if (end_char === "\n" && this._editor.State !== EditorStateEnum.VISUAL) {
+      this._editor.CursorPos = current_line.value.Span.length - 2;
+    } else {
+      this._editor.CursorPos = current_line.value.Span.length - 1;
+    }
+
     this._cursor_pos_ref = this._editor.CursorPos;
   }
 
@@ -253,6 +270,7 @@ export class NormalMode implements IEditorModes {
     this.IsFinding = false;
   }
 
+  // TODO: Fix these 2 functions
   // {
   public jump_up_paragraph() {
     let found = false;
@@ -324,5 +342,9 @@ export class NormalMode implements IEditorModes {
 
   public redo() {
     console.log("redo not implemented")
+  }
+
+  public paste() {
+
   }
 }
