@@ -61,7 +61,6 @@ export class InputMapper {
     this.set("n", "a", () => this.Insert.insert_end());
     this.set("n", "Escape", () => this.Normal.switch_normal());
     this.set("n", "u", () => this.Normal.undo());
-    this.set("n", "p", () => this.Normal.paste());
     this.set("n", "Control r", () => this.Normal.redo());
     this.set("i", "i", () => this.Insert.insert_start())
     this.set("i", "I", () => this.Insert.insert_start_line())
@@ -78,11 +77,10 @@ export class InputMapper {
       this.Visual.clear_buffer();
       this.Visual.end_track()
     });
-
     this.set("n", "v", () => this.Visual.start_track());
     this.set("v", "y", () => this.Visual.yank())
 
-    // Yank LIne
+    this.set("n", "p", () => this.Normal.paste());
     this.set("n", "yy", () => {
       this.Normal.start_line();
       this.Visual.start_track();

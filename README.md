@@ -23,4 +23,3 @@ pnpm install svim
 
 ## Notes: 
 The regex used to determine word and WORD (w/e/b/B) is not 100% accurate to the original vi editor
-I also regret writing this in typescript D:

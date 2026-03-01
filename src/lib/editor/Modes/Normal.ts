@@ -350,22 +350,33 @@ export class NormalMode implements IEditorModes {
     if (!this._editor.TextBuffer)
       return;
 
+    if (!this._editor.TextBuffer.head)
+      return;
+
     const current_line = this._editor.LinePos;
     const cursor_pos = this._editor.CursorPos
 
     let node = this._editor.TextBuffer.head;
-    while (node?.next) {
+    while (node.next) {
       const ln_text = node.value.Span;
       if (ln_text[ln_text?.length - 1] === "\n") {
-        const text = new LinkedListNode<GapBuffer>(new GapBuffer(ln_text));
-        node.insert_next(text);
+        this.paste_within(current_line, cursor_pos, ln_text);
       } else {
-        this._editor.Text.elementAtPos(current_line)?.value.CreateBufferAt(cursor_pos);
-        this._editor.Text.elementAtPos(current_line)!.value.ActiveZone += ln_text;
-        this._editor.Text.elementAtPos(current_line)?.value.SaveBuffer();
+        this.paste_multiline(ln_text, node);
       }
 
       node = node.next;
     }
+  }
+
+  private paste_multiline(ln_text: string, node: LinkedListNode<GapBuffer>) {
+    const text = new LinkedListNode<GapBuffer>(new GapBuffer(ln_text));
+    node.insert_next(text);
+  }
+
+  private paste_within(current_line: number, cursor_pos: number, ln_text: string) {
+    this._editor.Text.elementAtPos(current_line)?.value.CreateBufferAt(cursor_pos);
+    this._editor.Text.elementAtPos(current_line)!.value.ActiveZone += ln_text;
+    this._editor.Text.elementAtPos(current_line)?.value.SaveBuffer();
   }
 }

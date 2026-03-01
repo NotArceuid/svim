@@ -99,12 +99,12 @@
 
   .line-number {
     display: inline-block;
-    width: 40px;
+    min-width: 30px;
+    max-width: 30px;
     text-align: right;
     padding-right: 12px;
     color: #666;
     user-select: none;
-    border: 1px solid #666;
   }
 
   .line-content {
