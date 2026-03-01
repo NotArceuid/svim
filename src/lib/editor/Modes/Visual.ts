@@ -21,7 +21,7 @@ export class VisualMode implements IEditorModes {
 
   public end_track(): Vector2 {
     this.Tracking = false;
-    this._editor.State = EditorStateEnum.VISUAL;
+    this._editor.State = EditorStateEnum.NORMAL;
     return {
       x: this.VisualBufferEnd.x - this.VisualBufferStart.x,
       y: this.VisualBufferEnd.y - this.VisualBufferStart.y,

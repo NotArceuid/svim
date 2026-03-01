@@ -78,7 +78,7 @@ export class InputMapper {
       this.Visual.end_track()
     });
 
-    this.set("v", "v", () => this.Visual.start_track());
+    this.set("n", "v", () => this.Visual.start_track());
 
     editor.EditorStateEvent.Add((state) => {
       switch (state) {
@@ -125,14 +125,6 @@ export class InputMapper {
       switch_modes?.();
     }
 
-    let command = this.CurrentInputMap.get(":");
-    if (command) {
-      // not yet implemented lol
-      // open command palette 
-      this.InputBuffer = ""
-      return;
-    }
-
     switch (TextEditor.State) {
       case EditorStateEnum.NORMAL:
         if (!this.HandleNormalMode(key)) return;
@@ -143,6 +135,9 @@ export class InputMapper {
       case EditorStateEnum.VISUAL:
         if (this.HandleVisualMode(key)) return;
         break;
+      case EditorStateEnum.COMMAND:
+        break;
+
     }
   }
 
@@ -175,12 +170,16 @@ export class InputMapper {
     let action = this.CurrentInputMap.get(key);
     action?.();
 
-    if (this.Visual.Tracking)
+    if (this.Visual.Tracking) {
       this.HandleNormalMode(key);
+      console.log(this.Visual.VisualBufferStart)
+      console.log(this.Visual.VisualBufferEnd)
+    }
 
     return true;
   }
 
+  // Here using normal input map since multi action can occur with normal mode related actions only
   private TryMultiAction(): Vector2 {
     let count = this.InputBuffer.match("[0-9]*");
 
@@ -193,8 +192,8 @@ export class InputMapper {
       let func = this.NormalInputMap.get(this.InputBuffer);
       if (func) {
         func();
-        cursor_dif.x = cursor_dif.x = TextEditor.LinePos;
-        cursor_dif.y = cursor_dif.y - TextEditor.CursorPos;
+        cursor_dif.x = TextEditor.LinePos - cursor_dif.x;
+        cursor_dif.y = TextEditor.CursorPos - cursor_dif.y;
 
         this.InputBuffer = "";
       }
@@ -205,8 +204,8 @@ export class InputMapper {
         for (let i = 0; i < Number(count[0]); i++) {
           func();
 
-          cursor_dif.x = cursor_dif.x = TextEditor.LinePos;
-          cursor_dif.y = cursor_dif.y - TextEditor.CursorPos;
+          cursor_dif.x = TextEditor.LinePos - cursor_dif.x;
+          cursor_dif.y = TextEditor.CursorPos - cursor_dif.y;
         }
       }
 
