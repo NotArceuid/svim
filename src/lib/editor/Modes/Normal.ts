@@ -1,4 +1,3 @@
-import { navigating } from "$app/state";
 import { type Editor } from "../Editor.svelte.ts";
 import { Settings } from "../Settings.ts";
 import { GapBuffer } from "../Structs/GapBuffer.svelte.ts";
@@ -390,5 +389,15 @@ export class NormalMode implements IEditorModes {
       this._editor.LinePos = current_line + (lines.length - 1);
       this._editor.CursorPos = lines[lines.length - 1].length;
     }
+  }
+
+  public delete() {
+    if (!this._editor.CurrentLine)
+      return;
+
+    let length = this._editor.CurrentLine.value.Span.length;
+    let start = this._editor.CurrentLine.value.Span.slice(0, this._editor.CursorPos);
+    let end = this._editor.CurrentLine.value.Span.slice(this._editor.CursorPos + 1, length);
+    this._editor.CurrentLine.value.Span = start + end
   }
 }

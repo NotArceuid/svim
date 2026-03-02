@@ -3,6 +3,7 @@ import { EditorStateEnum } from "./Modes/EditorModes.ts";
 import { GapBuffer } from "./Structs/GapBuffer.svelte.ts";
 import { LinkedList, LinkedListNode } from "./Structs/LinkedList.svelte.ts";
 import { Observer } from "./Structs/Observer.svelte.ts";
+import type { VisualBufferRange } from "./Structs/Vector2.svelte.ts";
 
 export class Editor {
   public Text = $state(new LinkedList<GapBuffer>());
@@ -11,6 +12,7 @@ export class Editor {
   public UndoStack: undefined;
   public CurrentLine: LinkedListNode<GapBuffer> | null;
   public CursorPos: number = $state(0);
+
   private _linePos = $state(0);
   public get LinePos() {
     return this._linePos;
@@ -37,6 +39,23 @@ export class Editor {
   }
   public get VisualBufferEnd() {
     return this._inputMapper.Visual.VisualBufferEnd;
+  }
+
+  public GetVisualBufferRange(): VisualBufferRange {
+    const [start_y, end_y] = [
+      Math.min(this.VisualBufferStart.y, this.VisualBufferEnd.y),
+      Math.max(this.VisualBufferStart.y, this.VisualBufferEnd.y),
+    ];
+
+    const [start_x, end_x] =
+      start_y === this.VisualBufferStart.y
+        ? [this.VisualBufferStart.x, this.VisualBufferEnd.x]
+        : [this.VisualBufferEnd.x, this.VisualBufferStart.x];
+
+    return {
+      start: { y: start_y, x: start_x },
+      end: { y: end_y, x: end_x }
+    }
   }
 
   private _inputMapper: InputMapper;

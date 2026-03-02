@@ -1,6 +1,6 @@
 import { TextEditor, type Editor } from "./Editor.svelte.ts";
 import { EditorStateEnum } from "./Modes/EditorModes.ts";
-import { InsertMode } from "./Modes/Insert.ts";
+import { InsertMode } from "./Modes/Insert.svelte.ts";
 import { NormalMode } from "./Modes/Normal.ts";
 import { VisualMode } from "./Modes/Visual.svelte.ts";
 import type { Vector2 } from "./Structs/Vector2.svelte.ts";
@@ -62,6 +62,18 @@ export class InputMapper {
     this.set("n", "Escape", () => this.Normal.switch_normal());
     this.set("n", "u", () => this.Normal.undo());
     this.set("n", "Control r", () => this.Normal.redo());
+    this.set("n", "p", () => this.Normal.paste());
+    this.set("n", "x", () => this.Normal.delete());
+    this.set("n", "yy", () => {
+      this.Normal.start_line();
+      this.Visual.start_track();
+      this.Normal.end_line();
+      this.Visual.update_buffer({ x: TextEditor.CursorPos, y: 0 });
+      this.Visual.yank();
+      this.Visual.end_track();
+    });
+
+    // Insert Mode
     this.set("i", "i", () => this.Insert.insert_start())
     this.set("i", "I", () => this.Insert.insert_start_line())
     this.set("i", "a", () => this.Insert.insert_end())
@@ -73,24 +85,19 @@ export class InputMapper {
     this.set("i", "~", () => this.Insert.switch_case());
     this.set("i", "Escape", () => this.Normal.switch_normal());
 
+    // Visual mode
+    this.set("n", "v", () => this.Visual.start_track());
     this.set("v", "Escape", () => {
       this.Visual.clear_buffer();
       this.Visual.end_track()
     });
-    this.set("n", "v", () => this.Visual.start_track());
-    this.set("v", "y", () => this.Visual.yank())
+    this.set("v", "y", () => this.Visual.yank());
+    this.set("v", "x", () => this.Visual.delete());
 
-    this.set("n", "p", () => this.Normal.paste());
-    this.set("n", "yy", () => {
-      this.Normal.start_line();
-      this.Visual.start_track();
-      this.Normal.end_line();
-      this.Visual.update_buffer({ x: TextEditor.CursorPos, y: 0 });
-      this.Visual.yank();
-      this.Visual.end_track();
-    });
+    // Optional Mode
 
     editor.EditorStateEvent.Add((state) => {
+      this.InputBuffer = "";
       switch (state) {
         case EditorStateEnum.NORMAL:
           this.CurrentInputMap = this.NormalInputMap;
@@ -137,21 +144,20 @@ export class InputMapper {
 
     switch (TextEditor.State) {
       case EditorStateEnum.NORMAL:
-        if (!this.HandleNormalMode(key)) return;
+        this.HandleNormalMode(key);
         break;
       case EditorStateEnum.INSERT:
-        if (this.HandleInsertMode(key)) return;
+        this.HandleInsertMode(key)
         break;
       case EditorStateEnum.VISUAL:
-        if (this.HandleVisualMode(key)) return;
+        this.HandleVisualMode(key)
         break;
       case EditorStateEnum.COMMAND:
         break;
-
     }
   }
 
-  private HandleNormalMode(key: string): boolean {
+  private HandleNormalMode(key: string) {
     if (this.Normal.IsFinding) {
       if (key === ";" || key === ",") {
         this.Normal.stop_find();
@@ -164,7 +170,7 @@ export class InputMapper {
       let val = this.NormalInputMap.get("0");
       val?.();
       this.InputBuffer = "";
-      return false;
+      return;
     }
 
     if (!key.match("[0-9]")) {
@@ -172,24 +178,19 @@ export class InputMapper {
       if (this.Visual.Tracking)
         this.Visual.update_buffer(diff);
     }
-
-    return true;
   }
 
-  private HandleInsertMode(key: string): boolean {
+  private HandleInsertMode(key: string) {
     this.Insert.update_ln_buffer(key);
-    return true;
   }
 
-  private HandleVisualMode(key: string): boolean {
+  private HandleVisualMode(key: string) {
     let action = this.CurrentInputMap.get(key);
     action?.();
 
     if (this.Visual.Tracking) {
       this.HandleNormalMode(key);
     }
-
-    return true;
   }
 
   // Here using normal input map since multi action can occur with normal mode related actions only

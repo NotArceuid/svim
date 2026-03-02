@@ -87,10 +87,28 @@ export class InsertMode implements IEditorModes {
 
   // x
   public delete_char() {
+    const [start_y, end_y] = [
+      Math.min(this._editor.VisualBufferStart.y, this._editor.VisualBufferEnd.y),
+      Math.max(this._editor.VisualBufferStart.y, this._editor.VisualBufferEnd.y),
+    ];
+
+    const [start_x, end_x] =
+      start_y === this._editor.VisualBufferStart.y
+        ? [this._editor.VisualBufferStart.x, this._editor.VisualBufferEnd.x]
+        : [this._editor.VisualBufferEnd.x, this._editor.VisualBufferStart.x];
 
   }
 
   public switch_case() {
+    const [start_y, end_y] = [
+      Math.min(this._editor.VisualBufferStart.y, this._editor.VisualBufferEnd.y),
+      Math.max(this._editor.VisualBufferStart.y, this._editor.VisualBufferEnd.y),
+    ];
+
+    const [start_x, end_x] =
+      start_y === this._editor.VisualBufferStart.y
+        ? [this._editor.VisualBufferStart.x, this._editor.VisualBufferEnd.x]
+        : [this._editor.VisualBufferEnd.x, this._editor.VisualBufferStart.x];
 
   }
 
@@ -136,25 +154,54 @@ export class InsertMode implements IEditorModes {
 
     if (this._editor.CursorPos === 0) {
       let ln_text = this._editor.CurrentLine.value.Span;
+      let prev = this._editor.CurrentLine!.prev?.value.Span.length ?? 0;
 
       if (this._editor.CurrentLine.prev) {
         this._editor.CurrentLine.prev.value.Span += ln_text;
       }
 
+      this._editor.CursorPos = prev;
       this._editor.CurrentLine.delete();
-      this._editor.CurrentLine = this._editor.CurrentLine.next;
+      this._editor.LinePos--;
+
       return;
     }
 
     if (this._editor.CurrentLine.value.ActiveZone) {
       this._editor.CurrentLine.value.ActiveZone = this._editor.CurrentLine.value.ActiveZone.slice(0, -1);
+      this._editor.CursorPos--;
     }
-
-    this._editor.CursorPos--;
   }
 
   private enter() {
+    if (!this._editor.CurrentLine) {
+      return;
+    }
 
+    const before = this._editor.InsertBefore;
+    const str = this._editor.CurrentLine.value.Span.slice(this._editor.CursorPos + (before ? 0 : 1), this._editor.CurrentLine.value.Span.length - 1);
+    const end = this._editor.CurrentLine.value.Span.slice(0, this._editor.CursorPos + (before ? 0 : 1));
+    this._editor.CurrentLine.value.Span = end;
+
+    // Workaround, these 2 lines made it work, don't touch it
+    this._editor.CurrentLine.value.CreateBufferAt(0);
+    this._editor.CurrentLine.value.SaveBuffer();
+
+    let whitespace_count = 0;
+    const curr_line = this._editor.CurrentLine;
+    for (let i = 0; i < curr_line.value.Span.length; i++) {
+      if (curr_line?.value.Span[i] === " ") {
+        continue;
+      }
+
+      whitespace_count = i;
+      break;
+    }
+
+    const new_node = new LinkedListNode<GapBuffer>(new GapBuffer(this.get_indentation_spaces().repeat(whitespace_count) + str));
+    this._editor.CurrentLine?.insert_next(new_node);
+    this._editor.CursorPos = whitespace_count;
+    this._editor.LinePos++;
   }
 
   private get_indentation_spaces(): string {

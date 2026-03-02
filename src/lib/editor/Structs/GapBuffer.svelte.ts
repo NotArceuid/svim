@@ -1,5 +1,5 @@
 export class GapBuffer {
-  public Span: string;
+  public Span: string = $state("");
   public BufferPresent: boolean = $state(false);
   public ActiveZone: string | null = $state(null);
   public BufferLeft: string | null = $state(null);
@@ -8,10 +8,10 @@ export class GapBuffer {
   public BufferType?: BufferTypeEnum;
 
   constructor(span: string) {
-    this.Span = $state(span);
+    this.Span = span;
   }
 
-  // gay ass javascript doesnt support function overloading  
+  //  javascript doesnt support function overloading  bruv
   public CreateBufferAt(start: number) {
     this.ActiveZone = this.Span.slice(0, start)
     this.BufferRight = this.Span.slice(start, this.Span.length);

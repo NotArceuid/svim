@@ -48,21 +48,12 @@ export class VisualMode implements IEditorModes {
   }
 
   public yank() {
-    const [start_y, end_y] = [
-      Math.min(this._editor.VisualBufferStart.y, this._editor.VisualBufferEnd.y),
-      Math.max(this._editor.VisualBufferStart.y, this._editor.VisualBufferEnd.y),
-    ];
-
-    const [start_x, end_x] =
-      start_y === this._editor.VisualBufferStart.y
-        ? [this._editor.VisualBufferStart.x, this._editor.VisualBufferEnd.x]
-        : [this._editor.VisualBufferEnd.x, this._editor.VisualBufferStart.x];
-
-    let text = this._editor.Text.elementAtPos(Math.min(start_y, end_y))!;
-    if (start_y === end_y) {
-      this.yank_single(text, start_x, end_x);
+    let range = this._editor.GetVisualBufferRange();
+    let text = this._editor.Text.elementAtPos(Math.min(range.start.y, range.end.y))!;
+    if (range.start.y === range.end.y) {
+      this.yank_single(text, range.start.x, range.end.x);
     } else {
-      this.yank_multiline(text, start_x, end_x, start_y, end_y);
+      this.yank_multiline(text, range.start.x, range.end.x, range.start.y, range.end.y);
     }
 
     this._editor.CursorPos = this._cursor_pos_cache.x;
@@ -114,6 +105,7 @@ export class VisualMode implements IEditorModes {
   }
 
   public delete() {
+    let range = this._editor.GetVisualBufferRange();
 
   }
 }

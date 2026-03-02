@@ -10,7 +10,7 @@ export const Settings: IEditorSettings = {
   WORDRegexStart: /(?<!\S)(\S)/g,
   WORDRegexEnd: /(\S)(?<!\S)/g,
   FontSize: 16,
-  IndentationSize: 2,
+  IndentationSize: 1,
   RelativeLineNumber: false,
   SaveToClipboard: dev,
 }
@@ -21,7 +21,7 @@ interface IEditorSettings {
   WORDRegexStart: RegExp,
   WORDRegexEnd: RegExp,
   FontSize: number,
-  IndentationSize: 2,
+  IndentationSize: number,
   RelativeLineNumber: boolean,
   SaveToClipboard: boolean,
 }
