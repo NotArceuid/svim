@@ -5,7 +5,7 @@ export enum EditorStateEnum {
   REPLACE = "REPLACE",
   VBLOCK = "VBLOCK",
   VLINE = "VLINE",
-  PENDING = "PENDING",
+  OPTION = "OPTION",
   COMMAND = "COMMAND"
 }
 

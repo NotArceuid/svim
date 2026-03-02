@@ -1,7 +1,5 @@
-import { TextEditor, type Editor } from "../Editor.svelte.ts";
+import { type Editor } from "../Editor.svelte.ts";
 import { Settings } from "../Settings.ts";
-import { GapBuffer } from "../Structs/GapBuffer.svelte.js";
-import { LinkedList, LinkedListNode } from "../Structs/LinkedList.svelte.ts";
 import type { Vector2 } from "../Structs/Vector2.svelte.ts";
 import { EditorStateEnum, type IEditorModes } from "./EditorModes.ts";
 
@@ -40,6 +38,9 @@ export class VisualMode implements IEditorModes {
     this.VisualBufferEnd.y += diff.y;
   }
 
+  /*
+  * This function clears the visual buffer
+  */
   public clear_buffer() {
     this.Tracking = false;
 
@@ -50,12 +51,36 @@ export class VisualMode implements IEditorModes {
   public yank() {
     let range = this._editor.GetVisualBufferRange();
     let text = this._editor.Text.elementAtPos(Math.min(range.start.y, range.end.y))!;
+
+    let copied_text = "";
     if (range.start.y === range.end.y) {
-      this.yank_single(text, range.start.x, range.end.x);
+      const new_text = text.value.Span.slice(range.start.x, range.end.x);
+      copied_text += new_text;
     } else {
-      this.yank_multiline(text, range.start.x, range.end.x, range.start.y, range.end.y);
+      let iter = range.start.y;
+      while (text.next) {
+        let buff_line = text.value.Span;
+        if (iter === range.start.y) {
+          buff_line = buff_line.slice(range.start.x, buff_line.length);
+          copied_text += buff_line;
+        }
+        else if (iter === range.end.y) {
+          buff_line = buff_line.slice(0, range.end.x + 1);
+          copied_text += buff_line;
+          break;
+        } else {
+          copied_text += buff_line;
+        }
+
+        text = text.next
+        iter++;
+      }
     }
 
+    if (Settings.SaveToClipboard)
+      navigator.clipboard.writeText(copied_text);
+
+    this._editor.TextBuffer = copied_text;
     this._editor.CursorPos = this._cursor_pos_cache.x;
     this._editor.LinePos = this._cursor_pos_cache.y;
 
@@ -63,49 +88,60 @@ export class VisualMode implements IEditorModes {
     this._editor.State = EditorStateEnum.NORMAL;
   }
 
-  private yank_multiline(text: LinkedListNode<GapBuffer>, start_x: number, end_x: number, start_y: number, end_y: number) {
-    let iter = 0;
+  public delete() {
+    let range = this._editor.GetVisualBufferRange();
+    let text = this._editor.Text.elementAtPos(Math.min(range.start.y, range.end.y))!;
     let copied_text = "";
-    while (text.next) {
-      let buff_line = text.value.Span;
-      if (iter === 0) {
-        buff_line = buff_line.slice(start_x, buff_line.length);
-        copied_text += buff_line;
-      }
-      else if (iter === end_y) {
-        buff_line = buff_line.slice(0, end_x + 1);
-        copied_text += buff_line;
-      } else {
-        copied_text += buff_line;
+    let multi_edit = false;
+    if (range.start.y === range.end.y) {
+      text.value.CreateBufferRegion(range.start.x, range.end.x);
+      text.value.UpdateActiveZone("");
+
+      if (text.value.Span.slice(-1) === "\n") {
+        console.log("w")
       }
 
-      if (iter === end_y) {
-        break;
-      }
+      text.value.SaveBuffer();
+    } else {
+      let iter = range.start.y;
+      while (text.next) {
+        if (iter === range.start.y) {
+          const slice = text.value.Span.slice(range.start.x, text.value.Span.length);
+          copied_text += slice;
+          text.value.Span = text.value.Span.slice(0, range.start.x);
+        }
+        else if (iter === range.end.y) {
+          const slice = text.value.Span.slice(0, range.end.x + 1);
+          copied_text += slice;
+          text.value.Span = text.value.Span.slice(range.end.x + 1, text.value.Span.length);
 
-      text = text.next
-      iter++;
+          break;
+        } else {
+          copied_text += text.value;
+          text.delete();
+        }
+
+        text = text.next
+        iter++;
+        multi_edit = true;
+      }
     }
 
     if (Settings.SaveToClipboard)
       navigator.clipboard.writeText(copied_text);
 
     this._editor.TextBuffer = copied_text;
+
+    this._editor.CursorPos = this._cursor_pos_cache.x;
+    this._editor.LinePos = this._cursor_pos_cache.y;
+    this._editor.State = EditorStateEnum.NORMAL;
+
+    if (multi_edit) {
+
+    }
   }
 
-  private yank_single(text: LinkedListNode<GapBuffer>, start_x: number, end_x: number) {
-    const new_text = text.value.Span.slice(start_x, end_x);
-    let copied_text = "";
-    copied_text += new_text;
-
-    if (Settings.SaveToClipboard)
-      navigator.clipboard.writeText(copied_text);
-
-    this._editor.TextBuffer = copied_text;
-  }
-
-  public delete() {
-    let range = this._editor.GetVisualBufferRange();
+  public undo_delete() {
 
   }
 }

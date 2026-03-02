@@ -1,7 +1,15 @@
 export class GapBuffer {
   public Span: string = $state("");
   public BufferPresent: boolean = $state(false);
-  public ActiveZone: string | null = $state(null);
+  private _activeZone: string | null = $state(null);
+  public get ActiveZone(): string | null {
+    return this._activeZone;
+  }
+
+  private set ActiveZone(value) {
+    this._activeZone = value;
+  }
+
   public BufferLeft: string | null = $state(null);
   public BufferRight: string | null = $state(null);
 
@@ -12,32 +20,47 @@ export class GapBuffer {
   }
 
   //  javascript doesnt support function overloading  bruv
-  public CreateBufferAt(start: number) {
-    this.ActiveZone = this.Span.slice(0, start)
-    this.BufferRight = this.Span.slice(start, this.Span.length);
+  public CreateBufferAt(start: number, split_right = false) {
+    if (split_right) {
+      this.ActiveZone = this.Span.slice(0, start)
+      this.BufferRight = this.Span.slice(start, this.Span.length) ?? "";
+      this.BufferLeft = null;
+      this.BufferPresent = true;
+      this.BufferType = BufferTypeEnum.SPLITRIGHT;
+      return;
+    }
 
-    this.BufferLeft = null;
+    this.ActiveZone = this.Span.slice(0, start)
+    this.BufferLeft = this.Span.slice(start, this.Span.length) ?? "";
+    this.BufferRight = null;
     this.BufferPresent = true;
-    this.BufferType = BufferTypeEnum.SPLIT;
+    this.BufferType = BufferTypeEnum.SPLITLEFT;
   }
 
   public CreateBufferRegion(left_end: number, right_start: number) {
     this.BufferLeft = this.Span.slice(0, left_end);
     this.BufferRight = this.Span.slice(right_start, this.Span.length);
+    this.ActiveZone = this.Span.slice(left_end, right_start);
 
     this.BufferPresent = true;
     this.BufferType = BufferTypeEnum.REGION;
   }
 
+  public UpdateActiveZone(text: string) {
+    this.ActiveZone = text;
+  }
+
   public SaveBuffer() {
     switch (this.BufferType) {
       case BufferTypeEnum.REGION:
-        if (this.BufferLeft)
-          this.Span = this.BufferLeft + this.ActiveZone + this.BufferRight;
+        this.Span = (this.BufferLeft ?? "") + this.ActiveZone + (this.BufferRight ?? "");
         break;
-      case BufferTypeEnum.SPLIT:
-        if (this.ActiveZone)
-          this.Span = this.ActiveZone + this.BufferRight;
+      case BufferTypeEnum.SPLITLEFT:
+        console.log(this.ActiveZone)
+        this.Span = (this.ActiveZone ?? "") + (this.BufferLeft ?? "");
+        break;
+      case BufferTypeEnum.SPLITRIGHT:
+        this.Span = (this.BufferRight ?? "") + (this.ActiveZone ?? "");
         break;
     }
 
@@ -50,7 +73,13 @@ export class GapBuffer {
   }
 }
 
+/*
+ * Region: Region buffer Left Buffer + ActiveZone + Right Buffer
+ * Split Left: Active Zone + Right buffer
+ * Split right: Left Buffer + Active Zone
+ */
 export enum BufferTypeEnum {
   REGION,
-  SPLIT
+  SPLITLEFT,
+  SPLITRIGHT
 }

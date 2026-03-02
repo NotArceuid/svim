@@ -57,16 +57,25 @@
                 class="char {render_cursor(line_num, char_num)} "
                 style="display: inline-block;"
               >
-                {char}
+                {char === "\n" ? "-" : char}
               </span>
             {/each}
-          {:else}
-            {#each line.ActiveZone + line.BufferRight as char, char_num}
+          {:else if line.BufferType === BufferTypeEnum.SPLITLEFT}
+            {#each line.ActiveZone + line.BufferLeft as char, char_num}
               <span
                 class="char {render_cursor(line_num, char_num)} "
                 style="display: inline-block;"
               >
-                {char}
+                {char === "\n" ? "-" : char}
+              </span>
+            {/each}
+          {:else}
+            {#each line.BufferRight + line.ActiveZone as char, char_num}
+              <span
+                class="char {render_cursor(line_num, char_num)} "
+                style="display: inline-block;"
+              >
+                {char === "\n" ? "-" : char}
               </span>
             {/each}
           {/if}
@@ -76,7 +85,7 @@
               class="char {render_cursor(line_num, char_num)} "
               style="display: inline-block;"
             >
-              {char}
+              {char === "\n" ? "-" : char}
             </span>
           {/each}
         {/if}
@@ -84,6 +93,7 @@
     </div>
   {/each}
   <span>{TextEditor.State}</span>
+  <span>{TextEditor.LinePos}:{TextEditor.CursorPos}</span>
 </div>
 
 <style>

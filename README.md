@@ -1,9 +1,6 @@
 # svim 
 Recreation of the vi text editor in svelte 
 
-# installation 
-pnpm install svim
-
 ## Supported Features
 - Normal mode 
 - Insert mode 

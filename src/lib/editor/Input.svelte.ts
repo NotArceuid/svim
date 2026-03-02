@@ -22,6 +22,7 @@ export class InputMapper {
   private NormalInputMap = new Map<string, () => void>();
   private VisualInputMap = new Map<string, () => void>();
   private InsertInputMap = new Map<string, () => void>();
+  private OptionInputMap = new Map<string, () => void>();
   private CurrentInputMap = this.NormalInputMap;
   constructor(editor: Editor) {
     this.Normal = new NormalMode(editor);
@@ -61,7 +62,7 @@ export class InputMapper {
     this.set("n", "a", () => this.Insert.insert_end());
     this.set("n", "Escape", () => this.Normal.switch_normal());
     this.set("n", "u", () => this.Normal.undo());
-    this.set("n", "Control r", () => this.Normal.redo());
+    this.set("n", "Controlr", () => this.Normal.redo());
     this.set("n", "p", () => this.Normal.paste());
     this.set("n", "x", () => this.Normal.delete());
     this.set("n", "yy", () => {
@@ -91,9 +92,12 @@ export class InputMapper {
       this.Visual.clear_buffer();
       this.Visual.end_track()
     });
+
     this.set("v", "y", () => this.Visual.yank());
     this.set("v", "x", () => this.Visual.delete());
+    this.set("v", "d", () => this.Visual.delete());
 
+    this.set("v", "c", () => this.Visual.delete());
     // Optional Mode
 
     editor.EditorStateEvent.Add((state) => {
@@ -107,6 +111,9 @@ export class InputMapper {
           break;
         case EditorStateEnum.VISUAL:
           this.CurrentInputMap = this.VisualInputMap;
+          break;
+        case EditorStateEnum.OPTION:
+          this.CurrentInputMap = this.OptionInputMap;
           break;
       }
     })
@@ -124,8 +131,8 @@ export class InputMapper {
       case 'v':
         this.VisualInputMap.set(key, action);
         break;
-      case ' ':
-        console.log("not implemented lol")
+      case 'o':
+        this.OptionInputMap.set(key, action);
         break;
       case 't':
         console.log("not implemented lol")
@@ -153,6 +160,9 @@ export class InputMapper {
         this.HandleVisualMode(key)
         break;
       case EditorStateEnum.COMMAND:
+        break;
+      case EditorStateEnum.OPTION:
+        this.HandleOptionMode(key);
         break;
     }
   }
@@ -227,5 +237,9 @@ export class InputMapper {
     }
 
     return cursor_dif;
+  }
+
+  private HandleOptionMode(key: string) {
+    console.log("Not Implemented yet");
   }
 }
