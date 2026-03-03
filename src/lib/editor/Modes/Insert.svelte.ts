@@ -76,11 +76,10 @@ export class InsertMode implements IEditorModes {
     }
 
     if (this._editor.CurrentLine?.value.Span.charAt(this._editor.CursorPos) === "\n") {
-      this._editor.InsertBefore = true;
-      this._editor.CurrentLine?.value.CreateBufferAt(this._editor.CursorPos);
-
+      this.insert_start();
       return;
     }
+
     this._editor.InsertBefore = false;
     this._editor.CurrentLine?.value.CreateBufferAt(this._editor.CursorPos + 1);
   }
@@ -147,32 +146,44 @@ export class InsertMode implements IEditorModes {
     if (this._editor.CursorPos === 0 && !this._editor.InsertBefore) {
       this._editor.CursorPos = 1;
       this._editor.InsertBefore = true;
-      return;
     }
 
-    if (this._editor.CursorPos === 0) {
+    if (this._editor.CursorPos === 0 && this._editor.CurrentLine.prev) {
+      this._editor.CurrentLine.value.SaveBuffer();
+
       let ln_text = this._editor.CurrentLine.value.Span;
+      ln_text = ln_text.trimEnd();
       let prev_len = (this._editor.CurrentLine!.prev?.value.Span.length ?? 0) - 1;
 
-      this._editor.CurrentLine.value.SaveBuffer();
       let prev = this._editor.CurrentLine.prev;
       if (prev) {
-        prev.value.CreateBufferAt(Math.max(prev.value.Span.length - 1, 0), true);
-        prev.value.BufferRight = "";
+        prev.value.CreateBufferAt(Math.max(prev.value.Span.length, 0), true);
+        prev.value.UpdateBufferText("");
         prev.value.UpdateActiveZone(prev.value.ActiveZone + ln_text)
-        prev.value.Span = prev.value.Span.replace("\n", "");
+
+        if (ln_text.length > 0) {
+          prev.value.Span = prev.value.Span.replace("\n", "");
+        }
+
         prev.value.SaveBuffer();
       }
 
       this._editor.CursorPos = prev_len;
       this._editor.CurrentLine.delete();
       this._editor.LinePos--;
+      this._editor.State = EditorStateEnum.NORMAL;
+      this._editor.InsertBefore ? this.insert_start() : this.insert_end();
 
       return;
     }
 
     let text = this._editor.CurrentLine.value.ActiveZone?.slice(0, -1) ?? "";
     this._editor.CurrentLine.value.UpdateActiveZone(text)
+
+    if (this._editor.LinePos === 0 && this._editor.CursorPos === 0) {
+      return;
+    }
+
     this._editor.CursorPos--;
   }
 
@@ -189,7 +200,7 @@ export class InsertMode implements IEditorModes {
     const str = this._editor.CurrentLine.value.Span.slice(cursor_pos, this._editor.CurrentLine.value.Span.length - 1) + "\n";
     this._editor.CurrentLine.value.CreateBufferAt(cursor_pos);
     this._editor.CurrentLine.value.UpdateActiveZone(this._editor.CurrentLine.value.Span.slice(0, cursor_pos) + "\n");
-    this._editor.CurrentLine.value.BufferLeft = "";
+    this._editor.CurrentLine.value.UpdateBufferText("");
     this._editor.CurrentLine.value.SaveBuffer();
 
     let whitespace_count = 0;

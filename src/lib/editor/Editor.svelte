@@ -61,7 +61,7 @@
               </span>
             {/each}
           {:else if line.BufferType === BufferTypeEnum.SPLITLEFT}
-            {#each (line.ActiveZone ?? "") + line.BufferLeft as char, char_num}
+            {#each (line.ActiveZone ?? "") + (line.BufferRight ?? "") as char, char_num}
               <span
                 class="char {render_cursor(line_num, char_num)} "
                 style="display: inline-block;"
@@ -70,7 +70,7 @@
               </span>
             {/each}
           {:else if line.BufferType === BufferTypeEnum.SPLITRIGHT}
-            {#each (line.BufferRight ?? "") + line.ActiveZone as char, char_num}
+            {#each (line.BufferLeft ?? "") + (line.ActiveZone ?? "") as char, char_num}
               <span
                 class="char {render_cursor(line_num, char_num)} "
                 style="display: inline-block;"

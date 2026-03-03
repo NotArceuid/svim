@@ -94,7 +94,7 @@ export class VisualMode implements IEditorModes {
     let copied_text = "";
     let multi_edit = false;
     if (range.start.y === range.end.y) {
-      text.value.CreateBufferRegion(range.start.x, range.end.x);
+      text.value.CreateBufferRegion(range.start.x, range.end.x + 1);
       text.value.UpdateActiveZone("");
 
       if (text.value.Span.slice(-1) === "\n") {
@@ -106,14 +106,14 @@ export class VisualMode implements IEditorModes {
       let iter = range.start.y;
       while (text.next) {
         if (iter === range.start.y) {
-          const slice = text.value.Span.slice(range.start.x, text.value.Span.length);
-          copied_text += slice;
-          text.value.Span = text.value.Span.slice(0, range.start.x);
+          text.value.CreateBufferAt(range.start.x, false);
+          text.value.UpdateBufferText("");
+          copied_text += text.value.BufferRight;
         }
         else if (iter === range.end.y) {
-          const slice = text.value.Span.slice(0, range.end.x + 1);
-          copied_text += slice;
-          text.value.Span = text.value.Span.slice(range.end.x + 1, text.value.Span.length);
+          text.value.CreateBufferAt(range.end.x, false);
+          copied_text += text.value.BufferLeft;
+          text.value.UpdateBufferText("");
 
           break;
         } else {
@@ -121,7 +121,8 @@ export class VisualMode implements IEditorModes {
           text.delete();
         }
 
-        text = text.next
+        text.value.SaveBuffer();
+        text = text.next;
         iter++;
         multi_edit = true;
       }
