@@ -50,9 +50,9 @@
     <div class="line">
       <span class="line-number">{line_num}</span>
       <span class="line-content">
-        {#if line.BufferPresent && line.ActiveZone}
+        {#if line.BufferPresent}
           {#if line.BufferType === BufferTypeEnum.REGION}
-            {#each line.BufferLeft + line.ActiveZone + line.BufferRight as char, char_num}
+            {#each line.BufferLeft + (line.ActiveZone ?? "") + line.BufferRight as char, char_num}
               <span
                 class="char {render_cursor(line_num, char_num)} "
                 style="display: inline-block;"
@@ -61,7 +61,7 @@
               </span>
             {/each}
           {:else if line.BufferType === BufferTypeEnum.SPLITLEFT}
-            {#each line.ActiveZone + line.BufferLeft as char, char_num}
+            {#each (line.ActiveZone ?? "") + line.BufferLeft as char, char_num}
               <span
                 class="char {render_cursor(line_num, char_num)} "
                 style="display: inline-block;"
@@ -69,8 +69,8 @@
                 {char === "\n" ? "-" : char}
               </span>
             {/each}
-          {:else}
-            {#each line.BufferRight + line.ActiveZone as char, char_num}
+          {:else if line.BufferType === BufferTypeEnum.SPLITRIGHT}
+            {#each (line.BufferRight ?? "") + line.ActiveZone as char, char_num}
               <span
                 class="char {render_cursor(line_num, char_num)} "
                 style="display: inline-block;"

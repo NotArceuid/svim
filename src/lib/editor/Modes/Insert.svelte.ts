@@ -23,11 +23,11 @@ export class InsertMode implements IEditorModes {
       break;
     }
 
-    let node = new LinkedListNode(new GapBuffer(this.get_indentation_spaces().repeat(whitespace_count == 0 ? 1 : whitespace_count) + "\n"));
+    let node = new LinkedListNode(new GapBuffer(this.get_indentation_spaces().repeat(whitespace_count) + "\n"));
     curr_line?.insert_next(node);
     this._editor.LinePos++;
-    this._editor.CursorPos = Math.max(node.value.Span.length - 1, 0);
-    this.insert_start()
+    this._editor.CursorPos = Math.max(node.value.Span.length - 2, 0);
+    whitespace_count > 0 ? this.insert_end() : this.insert_start();
   }
 
   public undo_insert_line_below() {
@@ -47,12 +47,12 @@ export class InsertMode implements IEditorModes {
       break;
     }
 
-    let node = new LinkedListNode(new GapBuffer(this.get_indentation_spaces().repeat(whitespace_count == 0 ? 1 : whitespace_count) + "\n"));
+    let node = new LinkedListNode(new GapBuffer(this.get_indentation_spaces().repeat(whitespace_count) + "\n"));
     curr_line?.insert_prev(node);
-    this._editor.CursorPos = Math.max(node.value.Span.length - 1, 0);
+    this._editor.CursorPos = Math.max(node.value.Span.length - 2, 0);
     this._editor.CurrentLine = this._editor.CurrentLine?.prev ?? null;
 
-    this.insert_start()
+    whitespace_count > 0 ? this.insert_end() : this.insert_start();
   }
 
   public undo_insert_line_above() {
@@ -73,9 +73,15 @@ export class InsertMode implements IEditorModes {
   public insert_end() {
     if (this._editor.State != EditorStateEnum.INSERT) {
       this._editor.State = EditorStateEnum.INSERT;
-      this._editor.InsertBefore = false;
     }
 
+    if (this._editor.CurrentLine?.value.Span.charAt(this._editor.CursorPos) === "\n") {
+      this._editor.InsertBefore = true;
+      this._editor.CurrentLine?.value.CreateBufferAt(this._editor.CursorPos);
+
+      return;
+    }
+    this._editor.InsertBefore = false;
     this._editor.CurrentLine?.value.CreateBufferAt(this._editor.CursorPos + 1);
   }
 
@@ -138,13 +144,20 @@ export class InsertMode implements IEditorModes {
     if (!this._editor.CurrentLine)
       return;
 
+    if (this._editor.CursorPos === 0 && !this._editor.InsertBefore) {
+      this._editor.CursorPos = 1;
+      this._editor.InsertBefore = true;
+      return;
+    }
+
     if (this._editor.CursorPos === 0) {
       let ln_text = this._editor.CurrentLine.value.Span;
       let prev_len = (this._editor.CurrentLine!.prev?.value.Span.length ?? 0) - 1;
 
+      this._editor.CurrentLine.value.SaveBuffer();
       let prev = this._editor.CurrentLine.prev;
       if (prev) {
-        prev.value.CreateBufferAt(prev.value.Span.length - 1, true);
+        prev.value.CreateBufferAt(Math.max(prev.value.Span.length - 1, 0), true);
         prev.value.BufferRight = "";
         prev.value.UpdateActiveZone(prev.value.ActiveZone + ln_text)
         prev.value.Span = prev.value.Span.replace("\n", "");
@@ -158,10 +171,9 @@ export class InsertMode implements IEditorModes {
       return;
     }
 
-    if (this._editor.CurrentLine.value.ActiveZone) {
-      this._editor.CurrentLine.value.UpdateActiveZone(this._editor.CurrentLine.value.ActiveZone.slice(0, -1))
-      this._editor.CursorPos--;
-    }
+    let text = this._editor.CurrentLine.value.ActiveZone?.slice(0, -1) ?? "";
+    this._editor.CurrentLine.value.UpdateActiveZone(text)
+    this._editor.CursorPos--;
   }
 
   public undo_backspace() {
@@ -173,13 +185,11 @@ export class InsertMode implements IEditorModes {
       return;
     }
 
-    const before = this._editor.InsertBefore;
-    const str = this._editor.CurrentLine.value.Span.slice(this._editor.CursorPos + (before ? 0 : 1), this._editor.CurrentLine.value.Span.length - 1);
-    const end = this._editor.CurrentLine.value.Span.slice(0, this._editor.CursorPos + (before ? 0 : 1));
-    this._editor.CurrentLine.value.Span = end;
-
-    // Workaround, these 2 lines made it work, don't touch it
-    this._editor.CurrentLine.value.CreateBufferAt(0);
+    const cursor_pos = this._editor.CursorPos + (this._editor.InsertBefore ? 0 : 1);
+    const str = this._editor.CurrentLine.value.Span.slice(cursor_pos, this._editor.CurrentLine.value.Span.length - 1) + "\n";
+    this._editor.CurrentLine.value.CreateBufferAt(cursor_pos);
+    this._editor.CurrentLine.value.UpdateActiveZone(this._editor.CurrentLine.value.Span.slice(0, cursor_pos) + "\n");
+    this._editor.CurrentLine.value.BufferLeft = "";
     this._editor.CurrentLine.value.SaveBuffer();
 
     let whitespace_count = 0;
