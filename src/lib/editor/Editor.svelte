@@ -57,7 +57,7 @@
                 class="char {render_cursor(line_num, char_num)} "
                 style="display: inline-block;"
               >
-                {char === "\n" ? "-" : char}
+                {char === "\n" && Settings.ShowLineBreak ? "-" : char}
               </span>
             {/each}
           {:else if line.BufferType === BufferTypeEnum.SPLITLEFT}
@@ -66,7 +66,7 @@
                 class="char {render_cursor(line_num, char_num)} "
                 style="display: inline-block;"
               >
-                {char === "\n" ? "-" : char}
+                {char === "\n" && Settings.ShowLineBreak ? "-" : char}
               </span>
             {/each}
           {:else if line.BufferType === BufferTypeEnum.SPLITRIGHT}
@@ -75,7 +75,7 @@
                 class="char {render_cursor(line_num, char_num)} "
                 style="display: inline-block;"
               >
-                {char === "\n" ? "-" : char}
+                {char === "\n" && Settings.ShowLineBreak ? "-" : char}
               </span>
             {/each}
           {/if}
@@ -85,7 +85,7 @@
               class="char {render_cursor(line_num, char_num)} "
               style="display: inline-block;"
             >
-              {char === "\n" ? "-" : char}
+              {char === "\n" && Settings.ShowLineBreak ? "-" : char}
             </span>
           {/each}
         {/if}

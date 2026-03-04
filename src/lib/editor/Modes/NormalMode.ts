@@ -1,8 +1,9 @@
-import { type Editor } from "../Editor.svelte.ts";
+import type { Editor } from "../Editor.svelte.ts";
 import { Settings } from "../Settings.ts";
-import { BufferTypeEnum, GapBuffer } from "../Structs/GapBuffer.svelte.ts";
+import { GapBuffer } from "../Structs/GapBuffer.svelte.ts";
 import { LinkedListNode } from "../Structs/LinkedList.svelte.ts";
-import { EditorStateEnum, type IEditorModes } from "./EditorModes.ts";
+import { type IEditorModes, EditorStateEnum } from "./EditorModes.ts";
+
 
 export class NormalMode implements IEditorModes {
   public IsFinding: boolean = false;
@@ -29,74 +30,57 @@ export class NormalMode implements IEditorModes {
   }
 
   private _cursor_pos_ref = -1;
+
   public up() {
     if (this._editor.LinePos == 0)
       return;
 
     let current_line = this._editor.CurrentLine;
-
     let prev_line = current_line?.prev;
-    let prev_line_length = prev_line?.value.Span.length ?? 0;
 
-    if (this._editor.CursorPos > this._cursor_pos_ref) {
-      this._cursor_pos_ref = this._editor.CursorPos;
+    if (!prev_line) return;
+
+    let prev_line_length = prev_line.value.Span.length;
+    let current_pos = this._editor.CursorPos;
+
+    if (current_pos > this._cursor_pos_ref) {
+      this._cursor_pos_ref = current_pos;
     }
 
-    if (prev_line_length > this._cursor_pos_ref) {
-      this._editor.LinePos = this._editor.LinePos - 1;
+    this._editor.LinePos--;
 
-      if (this._cursor_pos_ref < this._editor.CursorPos)
-        this._editor.CursorPos = this._cursor_pos_ref;
-
+    if (this._cursor_pos_ref < 0 || this._cursor_pos_ref >= prev_line_length) {
+      this._editor.CursorPos = Math.max(0, prev_line_length - 1);
       return;
     }
 
-    if (prev_line_length >= this._editor.CursorPos) {
-      this._editor.LinePos = this._editor.LinePos - 1;
-      return;
-    }
-
-    if (this._cursor_pos_ref >= prev_line_length) {
-      this._editor.CursorPos = prev_line_length - 1;
-      this._editor.LinePos = this._editor.LinePos - 1;
-      return;
-    }
+    this._editor.CursorPos = Math.min(this._cursor_pos_ref, prev_line_length - 1);
   }
 
-  // TODO: replace this with a much performant .length field
   public down() {
-    if (this._editor.LinePos == this._editor.Text.count())
+    if (this._editor.LinePos == this._editor.Text.count() - 1)
       return;
 
     let current_line = this._editor.CurrentLine;
-
     let next_line = current_line?.next;
-    let next_line_length = next_line?.value.Span.length ?? 0;
 
-    if (this._editor.CursorPos > this._cursor_pos_ref && next_line_length > this._editor.CursorPos) {
-      this._cursor_pos_ref = this._editor.CursorPos;
+    if (!next_line) return;
+
+    let next_line_length = next_line.value.Span.length;
+    let current_pos = this._editor.CursorPos;
+
+    if (current_pos > this._cursor_pos_ref) {
+      this._cursor_pos_ref = current_pos;
     }
 
-    if (next_line_length >= this._cursor_pos_ref) {
-      this._editor.LinePos = this._editor.LinePos + 1;
+    this._editor.LinePos++;
 
-      if (this._cursor_pos_ref < this._editor.CursorPos)
-        this._editor.CursorPos = this._cursor_pos_ref;
+    if (this._cursor_pos_ref < 0 || this._cursor_pos_ref >= next_line_length) {
+      this._editor.CursorPos = Math.max(0, next_line_length - 1);
       return;
     }
 
-    if (next_line_length > this._editor.CursorPos) {
-      this._editor.LinePos = this._editor.LinePos + 1;
-      return;
-    }
-
-    if (this._cursor_pos_ref >= next_line_length) {
-      this._editor.CursorPos = next_line_length - 1;
-      this._editor.LinePos = this._editor.LinePos + 1;
-      return;
-    }
-
-    this._editor.LinePos = this._editor.LinePos + 1;
+    this._editor.CursorPos = Math.min(this._cursor_pos_ref, next_line_length - 1);
   }
 
   /**
@@ -134,7 +118,7 @@ export class NormalMode implements IEditorModes {
           return;
 
         search_matches.push(x);
-      })
+      });
 
       if (search_matches.length == 0) {
         if (!curr_line?.next)
@@ -185,7 +169,7 @@ export class NormalMode implements IEditorModes {
           return;
 
         search_matches.push(x);
-      })
+      });
 
       if (search_matches.length == 0) {
         if (!curr_line?.prev) break;
@@ -205,7 +189,6 @@ export class NormalMode implements IEditorModes {
 
   // %
   public go_pair() {
-
   }
 
   // 0 
@@ -241,7 +224,7 @@ export class NormalMode implements IEditorModes {
   // gg
   public go_top() {
     this._editor.LinePos = 0;
-    this._editor.CursorPos = Math.min(this._editor.Text.head?.value.Span.length! - 1, this._editor.CursorPos);
+    this._editor.CursorPos = Math.min((this._editor.Text.head?.value.Span.length)! - 1, this._editor.CursorPos);
     this._cursor_pos_ref = this._editor.CursorPos;
   }
 
@@ -254,12 +237,10 @@ export class NormalMode implements IEditorModes {
 
   // ;
   public next() {
-
   }
 
   // ,
   public prev() {
-
   }
 
   // f
@@ -338,11 +319,11 @@ export class NormalMode implements IEditorModes {
   }
 
   public undo() {
-    console.log("undo not implemented")
+    console.log("undo not implemented");
   }
 
   public redo() {
-    console.log("redo not implemented")
+    console.log("redo not implemented");
   }
 
   public paste() {
@@ -350,13 +331,14 @@ export class NormalMode implements IEditorModes {
     const cursor_pos = this._editor.CursorPos;
 
     let currentNode = this._editor.Text.elementAtPos(current_line)!;
+
+    const currentText = currentNode.value.Span;
+    const afterCursor = currentText.substring(cursor_pos);
+
     const paste_content = this._editor.TextBuffer;
-
-    let lines = paste_content.match(/[^\n]*\n|[^\n]+/g);
-    if (!lines) return;
-
-    if (lines.length === 1 && !lines[0].endsWith('\n')) {
-      currentNode.value.CreateBufferRegion(cursor_pos, cursor_pos + 1);
+    let lines = paste_content.split('\n');
+    if (lines.length === 1 && !paste_content.endsWith('\n')) {
+      currentNode.value.CreateBufferRegion(cursor_pos, cursor_pos);
       currentNode.value.UpdateActiveZone(lines[0]);
 
       this._editor.CursorPos = cursor_pos + lines[0].length - 1;
@@ -364,7 +346,7 @@ export class NormalMode implements IEditorModes {
       return;
     }
 
-    if (lines[0].endsWith('\n')) {
+    if (lines.length === 1 && paste_content.endsWith('\n')) {
       currentNode.insert_next(new LinkedListNode<GapBuffer>(new GapBuffer(lines[0])));
       this._editor.LinePos++;
       return;
@@ -372,9 +354,36 @@ export class NormalMode implements IEditorModes {
 
     // Mulitline paste 
     // we can assume the first and each preceding lines - 1 ends with a \n character
-    currentNode.value.CreateBufferRegion(cursor_pos, cursor_pos);
+    while (currentNode.next) {
+      // create new ln
+      // below
+      if (currentNode.value.Span.endsWith('\n')) {
+        currentNode.insert_next(new LinkedListNode<GapBuffer>(new GapBuffer(currentNode.value.Span)));
+        return;
+      } else {
+        currentNode.value.CreateBufferRegion(cursor_pos, cursor_pos);
+        const buffer_right = currentNode.value.BufferRight;
+      }
+
+      // else append to  
+      currentNode.value.UpdateActiveZone(lines[0]);
+      currentNode.value.SaveBuffer();
+
+      currentNode = currentNode?.next;
+    }
 
 
+    let last_node = currentNode;
+    for (let i = 1; i < lines.length - 1; i++) {
+      const newNode = new LinkedListNode<GapBuffer>(new GapBuffer(lines[i] + "\n"));
+      last_node.insert_next(newNode);
+      last_node = newNode;
+    }
+
+    const lastNode = new LinkedListNode<GapBuffer>(
+      new GapBuffer(lines[lines.length - 1] + afterCursor)
+    );
+    last_node.insert_next(lastNode);
 
     this._editor.LinePos = current_line + (lines.length - 1);
     this._editor.CursorPos = lines[lines.length - 1].length;
@@ -387,6 +396,7 @@ export class NormalMode implements IEditorModes {
     let length = this._editor.CurrentLine.value.Span.length;
     let start = this._editor.CurrentLine.value.Span.slice(0, this._editor.CursorPos);
     let end = this._editor.CurrentLine.value.Span.slice(this._editor.CursorPos + 1, length);
-    this._editor.CurrentLine.value.Span = start + end
+    this._editor.CurrentLine.value.Span = start + end;
   }
 }
+

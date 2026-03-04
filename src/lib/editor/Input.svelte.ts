@@ -1,7 +1,7 @@
 import { TextEditor, type Editor } from "./Editor.svelte.ts";
 import { EditorStateEnum } from "./Modes/EditorModes.ts";
 import { InsertMode } from "./Modes/Insert.svelte.ts";
-import { NormalMode } from "./Modes/Normal.ts";
+import { NormalMode } from "./Modes/NormalMode.ts";
 import { VisualMode } from "./Modes/Visual.svelte.ts";
 import type { Vector2 } from "./Structs/Vector2.svelte.ts";
 

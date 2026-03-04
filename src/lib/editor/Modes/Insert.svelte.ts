@@ -1,6 +1,6 @@
 import { Editor } from "../Editor.svelte.ts";
 import { Settings } from "../Settings.ts";
-import { GapBuffer } from "../Structs/GapBuffer.svelte.ts";
+import { BufferTypeEnum, GapBuffer } from "../Structs/GapBuffer.svelte.ts";
 import { LinkedListNode } from "../Structs/LinkedList.svelte.ts";
 import { EditorStateEnum, type IEditorModes } from "./EditorModes.ts";
 
@@ -157,7 +157,7 @@ export class InsertMode implements IEditorModes {
 
       let prev = this._editor.CurrentLine.prev;
       if (prev) {
-        prev.value.CreateBufferAt(Math.max(prev.value.Span.length, 0), true);
+        prev.value.CreateBufferAt(Math.max(prev.value.Span.length, 0), BufferTypeEnum.SPLITRIGHT);
         prev.value.UpdateBufferText("");
         prev.value.UpdateActiveZone(prev.value.ActiveZone + ln_text)
 
@@ -198,6 +198,8 @@ export class InsertMode implements IEditorModes {
 
     const cursor_pos = this._editor.CursorPos + (this._editor.InsertBefore ? 0 : 1);
     const str = this._editor.CurrentLine.value.Span.slice(cursor_pos, this._editor.CurrentLine.value.Span.length - 1) + "\n";
+
+    this._editor.CurrentLine.value.SaveBuffer();
     this._editor.CurrentLine.value.CreateBufferAt(cursor_pos);
     this._editor.CurrentLine.value.UpdateActiveZone(this._editor.CurrentLine.value.Span.slice(0, cursor_pos) + "\n");
     this._editor.CurrentLine.value.UpdateBufferText("");
@@ -219,6 +221,9 @@ export class InsertMode implements IEditorModes {
     this._editor.CursorPos = whitespace_count;
     this._editor.InsertBefore = true;
     this._editor.LinePos++;
+    this._editor.State = EditorStateEnum.NORMAL
+
+    this.insert_start();
   }
 
   public undo_enter() {

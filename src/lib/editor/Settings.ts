@@ -13,6 +13,7 @@ export const Settings: IEditorSettings = {
   IndentationSize: 1,
   RelativeLineNumber: false,
   SaveToClipboard: dev,
+  ShowLineBreak: true,
 }
 
 interface IEditorSettings {
@@ -24,4 +25,5 @@ interface IEditorSettings {
   IndentationSize: number,
   RelativeLineNumber: boolean,
   SaveToClipboard: boolean,
+  ShowLineBreak: boolean,
 }
