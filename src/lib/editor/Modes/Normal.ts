@@ -29,73 +29,43 @@ export class NormalMode implements IEditorModes {
   }
 
   private _cursor_pos_ref = -1;
+  private get _isVisual(): boolean {
+    return this._editor.State === EditorStateEnum.VISUAL;
+  }
+
+  private effective_length(span: string): number {
+    const len = span.length;
+    if (!this._isVisual && len > 0 && span[len - 1] === '\n')
+      return len - 1;
+    return len;
+  }
+
   public up() {
-    if (this._editor.LinePos == 0)
+    if (this._editor.LinePos === 0)
       return;
 
-    let current_line = this._editor.CurrentLine;
+    const prev_line = this._editor.CurrentLine?.prev;
+    const prev_len = this.effective_length(prev_line?.value.Span ?? '');
 
-    let prev_line = current_line?.prev;
-    let prev_line_length = prev_line?.value.Span.length ?? 0;
-
-    if (this._editor.CursorPos > this._cursor_pos_ref) {
+    if (this._editor.CursorPos > this._cursor_pos_ref)
       this._cursor_pos_ref = this._editor.CursorPos;
-    }
 
-    if (prev_line_length > this._cursor_pos_ref) {
-      this._editor.LinePos = this._editor.LinePos - 1;
-
-      if (this._cursor_pos_ref < this._editor.CursorPos)
-        this._editor.CursorPos = this._cursor_pos_ref;
-
-      return;
-    }
-
-    if (prev_line_length >= this._editor.CursorPos) {
-      this._editor.LinePos = this._editor.LinePos - 1;
-      return;
-    }
-
-    if (this._cursor_pos_ref >= prev_line_length) {
-      this._editor.CursorPos = prev_line_length - 1;
-      this._editor.LinePos = this._editor.LinePos - 1;
-      return;
-    }
+    this._editor.LinePos--;
+    this._editor.CursorPos = Math.min(this._cursor_pos_ref, Math.max(0, prev_len - 1));
   }
 
   public down() {
-    if (this._editor.LinePos == this._editor.Text.count())
+    if (this._editor.LinePos === this._editor.Text.count())
       return;
 
-    let current_line = this._editor.CurrentLine;
+    const next_line = this._editor.CurrentLine?.next;
+    const next_len = this.effective_length(next_line?.value.Span ?? '');
 
-    let next_line = current_line?.next;
-    let next_line_length = next_line?.value.Span.length ?? 0;
-
-    if (this._editor.CursorPos > this._cursor_pos_ref && next_line_length > this._editor.CursorPos) {
+    if (this._editor.CursorPos > this._cursor_pos_ref)
       this._cursor_pos_ref = this._editor.CursorPos;
-    }
 
-    if (next_line_length >= this._cursor_pos_ref) {
-      this._editor.LinePos = this._editor.LinePos + 1;
-
-      if (this._cursor_pos_ref < this._editor.CursorPos)
-        this._editor.CursorPos = this._cursor_pos_ref;
-      return;
-    }
-
-    if (next_line_length > this._editor.CursorPos) {
-      this._editor.LinePos = this._editor.LinePos + 1;
-      return;
-    }
-
-    if (this._cursor_pos_ref >= next_line_length) {
-      this._editor.CursorPos = next_line_length - 1;
-      this._editor.LinePos = this._editor.LinePos + 1;
-      return;
-    }
-
-    this._editor.LinePos = this._editor.LinePos + 1;
+    this._editor.LinePos++;
+    this._editor.CursorPos = Math.min(this._cursor_pos_ref, Math.max(0, next_len - 1));
   }
 
   /**
@@ -253,29 +223,96 @@ export class NormalMode implements IEditorModes {
     this._cursor_pos_ref = this._editor.CursorPos;
   }
 
+  public FindChar: string | undefined;
+  public FindForwards?: boolean;
   // ;
   public next() {
-    if (!this.IsFinding)
+    if (!this.IsFinding || !this.FindChar)
       return;
+
+    let curr_line = this._editor.Text.elementAtPos(this._editor.LinePos);
+    let regex = new RegExp(this.FindChar, 'g');
+    let found = false;
+    while (!found) {
+      if (!curr_line) break;
+
+      let search_matches_iter = curr_line.value.Span.matchAll(regex!);
+      let search_matches: Array<RegExpExecArray> = new Array<RegExpExecArray>();
+      search_matches_iter.forEach((x) => {
+        if (x.index <= this._editor.CursorPos)
+          return;
+
+        search_matches.push(x);
+      })
+
+      if (search_matches.length == 0) {
+        if (!curr_line?.next)
+          break;
+
+        curr_line = curr_line.next;
+        this._editor.LinePos++;
+        this._editor.CursorPos = 0;
+        continue;
+      }
+
+      this._editor.CursorPos = search_matches[0].index;
+      this._cursor_pos_ref = this._editor.CursorPos;
+      found = true;
+    }
   }
 
   // ,
   public prev() {
-    if (!this.IsFinding)
+    if (!this.IsFinding || !this.FindChar)
       return;
+
+    let found = false;
+    let curr_line = this._editor.CurrentLine;
+
+    const regex = new RegExp(this.FindChar, 'g');
+    while (!found) {
+      let search_matches_iter = curr_line?.value.Span.matchAll(regex!);
+      let search_matches: Array<RegExpExecArray> = new Array<RegExpExecArray>();
+      search_matches_iter?.forEach((x) => {
+        if (x.index >= this._editor.CursorPos)
+          return;
+
+        search_matches.push(x);
+      })
+
+      if (search_matches.length == 0) {
+        if (!curr_line?.prev) break;
+
+        curr_line = curr_line.prev;
+
+        this._editor.LinePos--;
+        this._editor.CursorPos = curr_line.value.Span.length;
+        continue;
+      }
+
+      this._editor.CursorPos = search_matches[search_matches.length - 1].index;
+      this._cursor_pos_ref = this._editor.CursorPos;
+      found = true;
+    }
   }
 
   // f
   public find() {
+    if (this.IsFinding)
+      return;
+
     this.IsFinding = true;
+    this.FindForwards = true;
   }
 
   public find_backwards() {
     this.IsFinding = true;
+    this.FindForwards = false;
   }
 
   public stop_find() {
     this.IsFinding = false;
+    this.FindForwards = undefined;
   }
 
   // TODO: Fix these 2 functions

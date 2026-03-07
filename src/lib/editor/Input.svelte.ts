@@ -1,4 +1,3 @@
-import { text } from "@sveltejs/kit";
 import { TextEditor, type Editor } from "./Editor.svelte.ts";
 import { Macros } from "./Macros.svelte.js";
 import { EditorStateEnum } from "./Modes/EditorModes.ts";
@@ -94,7 +93,7 @@ export class InputMapper {
     this.set("n", "G", () => this.Normal.go_bottom());
     this.set("n", "gg", () => this.Normal.go_top());
     this.set("n", "f", () => this.Normal.find());
-    this.set("n", "Shiftf", () => this.Normal.find_backwards());
+    this.set("n", "F", () => this.Normal.find_backwards());
     this.set("n", ";", () => this.Normal.next());
     this.set("n", ",", () => this.Normal.prev());
     this.set("n", "O", () => this.Insert.insert_line_above());
@@ -165,6 +164,7 @@ export class InputMapper {
       let switch_modes = this.CurrentInputMap.get("Escape");
       switch_modes?.();
       this.Macros.push(key);
+      this.Normal.stop_find();
     }
 
     switch (TextEditor.State) {
@@ -184,13 +184,27 @@ export class InputMapper {
 
   private HandleNormalMode(key: string) {
     if (this.Normal.IsFinding) {
-      if (key === ";" || key === ",") {
-        this.Normal.stop_find();
+      if (key === ";") {
+        this.Normal.FindForwards ? this.Normal.next() : this.Normal.prev();
+        this.InputBuffer = "";
+        return;
       }
-    } else {
+      else if (key === ",") {
+        this.Normal.FindForwards ? this.Normal.prev() : this.Normal.next();
+        this.InputBuffer = "";
+        return;
+      }
+      else {
+        this.Normal.FindChar = key;
+        this.Normal.FindChar = this.Normal.FindChar.replace(/[.*+?^${}()|[\]\\]/, '\\$&');
+        this.InputBuffer = "";
+        this.Normal.FindForwards ? this.Normal.next() : this.Normal.prev();
+        return;
+      }
+    }
+    else {
       this.Normal.stop_find();
     }
-
 
     if (this.Macros.IsMacroPrimed) {
       if (!key.match(/[a-zA-Z]/))
