@@ -3,6 +3,7 @@ import { Macros } from "./Macros.svelte.js";
 import { EditorStateEnum } from "./Modes/EditorModes.ts";
 import { InsertMode } from "./Modes/Insert.svelte.ts";
 import { NormalMode } from "./Modes/Normal.ts";
+import { OptionMode } from "./Modes/Options.ts";
 import { VisualMode } from "./Modes/Visual.svelte.ts";
 import type { Vector2 } from "./Structs/Vector2.svelte.ts";
 
@@ -10,6 +11,7 @@ export class InputMapper {
   public Normal: NormalMode;
   public Insert: InsertMode;
   public Visual: VisualMode;
+  public Option: OptionMode;
   public Macros: Macros;
 
   private _inputBuffer: string = $state("");
@@ -30,11 +32,13 @@ export class InputMapper {
     this.Normal = new NormalMode(editor);
     this.Insert = new InsertMode(editor);
     this.Visual = new VisualMode(editor);
+    this.Option = new OptionMode(editor, this.Normal, this.Insert, this.Visual, this.NormalInputMap);
     this.Macros = new Macros(this);
 
     this.RegisterNormalMode();
     this.RegisterInputMode();
     this.RegisterVisualMode();
+    this.RegisterOptionMods();
 
     editor.EditorStateEvent.Add((state) => {
       this.InputBuffer = "";
@@ -58,7 +62,7 @@ export class InputMapper {
   private RegisterVisualMode() {
     this.set("n", "v", () => this.Visual.start_track());
     this.set("v", "y", () => this.Visual.yank());
-    this.set("v", "x", () => this.Visual.delete());
+    this.set("v", "x", () => this.Visual.delete(true));
     this.set("v", "d", () => this.Visual.delete());
     this.set("v", "c", () => this.Visual.delete());
     this.set("v", "Escape", () => {
@@ -106,7 +110,8 @@ export class InputMapper {
     this.set("n", "~", () => this.Visual.switch_case());
     this.set("n", "p", () => this.Normal.paste());
     this.set("n", "x", () => this.Normal.delete());
-    this.set("n", "yy", () => {
+    this.set("n", "y", () => {
+
       this.Normal.start_line();
       this.Visual.start_track();
       this.Normal.end_line();
@@ -134,6 +139,12 @@ export class InputMapper {
     this.set("i", "ArrowUp", () => this.Normal.up());
     this.set("i", "ArrowRight", () => this.Normal.right());
     this.set("i", "Escape", () => this.Normal.switch_normal());
+  }
+
+  private RegisterOptionMods() {
+    this.set('o', "y", () => { this.Option.start_options('y'); this.InputBuffer = "" });
+    this.set('o', "d", () => { this.Option.start_options('d'); this.InputBuffer = "" });
+    this.set('o', "c", () => { this.InputBuffer = ""; this.Option.start_options('c'); });
   }
 
   public set(mode: string, key: string, action: () => void) {
@@ -177,9 +188,25 @@ export class InputMapper {
       case EditorStateEnum.VISUAL:
         this.HandleVisualMode(key)
         break;
-      case EditorStateEnum.COMMAND:
+      case EditorStateEnum.OPTION:
+        this.HandleOptionMode(key);
         break;
     }
+  }
+
+  private HandleOptionMode(key: string) {
+    if (this.Option.OptionText?.[0]) {
+      this.Option.OptionText.push(key);
+      this.Option.fire_motion();
+      return;
+    }
+
+    const func = this.CurrentInputMap.get(key);
+    if (!func) {
+      this.InputBuffer = "";
+      return;
+    }
+    func();
   }
 
   private HandleNormalMode(key: string) {
@@ -207,7 +234,7 @@ export class InputMapper {
     }
 
     if (this.Macros.IsMacroPrimed) {
-      if (!key.match(/[a-zA-Z]/))
+      if (!key.match(/^\w$/))
         return;
 
       this.Macros.create_macro(key);
@@ -217,6 +244,16 @@ export class InputMapper {
 
     if (key === "@") {
       this.Macros.BeforePlay = true;
+      return;
+    }
+
+    if ((key === 'd' || key === 'c' || key === 'y') && !this.Option.OptionText) {
+      TextEditor.State = EditorStateEnum.OPTION;
+      const func = this.CurrentInputMap.get(key);
+      if (func) {
+        func();
+      }
+
       return;
     }
 

@@ -87,8 +87,12 @@ export class VisualMode implements IEditorModes {
   }
 
   // holy fuck this took me so long to impleemnt
-  public delete(): void {
+  public delete(x: boolean = false): void {
     const range = this._editor.GetVisualBufferRange();
+    if (range.start.x === range.end.x && range.start.y === range.end.y && !x) {
+      return;
+    }
+
     const copied_text = { val: "" };
 
     range.start.y === range.end.y ?

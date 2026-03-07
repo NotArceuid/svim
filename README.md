@@ -8,9 +8,9 @@ Recreation of the vi text editor in svelte
 - yank/paste
 - Macros 
 - Find/next
+- Some Options mode (c/d/y)
 
 ## Planned Features
-- Options mode (c/d)
 - Replace
 - Multi Insert
 - Find and replace
