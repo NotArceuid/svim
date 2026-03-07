@@ -67,6 +67,9 @@ export class Editor {
   constructor(text: string) {
     let lines = text.split(/(?<=\n)/);
     lines.forEach((line) => {
+      if (!line.endsWith('\n'))
+        line += '\n';
+
       let buff_line = new GapBuffer(line);
       this.Text.append(buff_line);
     });

@@ -1,7 +1,6 @@
 import { type Editor } from "../Editor.svelte.ts";
 import { Settings } from "../Settings.ts";
-import { BufferTypeEnum, GapBuffer } from "../Structs/GapBuffer.svelte.ts";
-import type { LinkedList, LinkedListNode } from "../Structs/LinkedList.svelte.ts";
+import { BufferTypeEnum } from "../Structs/GapBuffer.svelte.ts";
 import type { Vector2, VisualBufferRange } from "../Structs/Vector2.svelte.ts";
 import { EditorStateEnum, type IEditorModes } from "./EditorModes.ts";
 
@@ -40,9 +39,6 @@ export class VisualMode implements IEditorModes {
     this.VisualBufferEnd.y += diff.y;
   }
 
-  /*
-  * This function clears the visual buffer
-  */
   public clear_buffer() {
     this.Tracking = false;
 
@@ -103,7 +99,7 @@ export class VisualMode implements IEditorModes {
       navigator.clipboard.writeText(copied_text.val);
 
     this._editor.TextBuffer = copied_text.val;
-    this._editor.CursorPos = this._editor.LinePos >= range.start.y ? range.start.x : range.end.x;
+    this._editor.CursorPos = range.start.x < range.end.x ? range.start.x : range.end.x;
     this._editor.LinePos = this._editor.LinePos >= range.start.y ? range.start.y : range.end.y;
 
     if (this._editor.Text.elementAtPos(0)?.value.Span === "") {
@@ -124,7 +120,6 @@ export class VisualMode implements IEditorModes {
     first.value.CreateBufferAt(range.start.x, BufferTypeEnum.SPLITRIGHT);
     copied_text.val += first.value.ActiveZone;
     first.value.UpdateActiveZone("");
-    first.value.UpdateBufferText(text.value.BufferLeft + '\n');
     first.value.SaveBuffer();
 
     for (let i = 1; i < range.end.y - range.start.y; i++) {
@@ -158,7 +153,11 @@ export class VisualMode implements IEditorModes {
 
   private delete_within(range: VisualBufferRange, copied_text: { val: string }): void {
     let val = this._editor.Text.elementAtPos(Math.min(range.start.y, range.end.y))!;
-    val.value.CreateBufferRegion(range.start.x, range.end.x + 1);
+    val.value.CreateBufferRegion(
+      Math.min(range.start.x, range.end.x),
+      Math.max(range.start.x, range.end.x) + 1
+    );
+
     copied_text.val += val.value.ActiveZone;
     val.value.UpdateActiveZone("");
     val.value.SaveBuffer();
@@ -166,5 +165,71 @@ export class VisualMode implements IEditorModes {
 
   public undo_delete() {
 
+  }
+
+  public switch_case() {
+    const range = this._editor.GetVisualBufferRange();
+    range.start.y === range.end.y ? this.switch_case_within(range) : this.switch_case_multiline(range);
+
+    this._editor.CursorPos = range.start.x < range.end.x ? range.start.x : range.end.x;
+    this._editor.LinePos = this._editor.LinePos >= range.start.y ? range.start.y : range.end.y;
+
+    if (this._editor.Text.elementAtPos(0)?.value.Span === "") {
+      this._editor.Text.deleteHead();
+      this._editor.CurrentLine = this._editor.Text.elementAtPos(this._editor.LinePos - 1)!;
+    }
+
+    this._editor.CurrentLine = this._editor.Text.elementAtPos(this._editor.LinePos)!;
+    this._editor.State = EditorStateEnum.NORMAL;
+  }
+
+  private switch_case_within(range: VisualBufferRange) {
+    let val = this._editor.Text.elementAtPos(Math.min(range.start.y, range.end.y))!;
+    val.value.CreateBufferRegion(
+      Math.min(range.start.x, range.end.x),
+      Math.max(range.start.x, range.end.x) + 1
+    );
+
+    let text = { val: val.value.ActiveZone! };
+    this.invert_cases(text);
+    val.value.UpdateActiveZone(text.val);
+    val.value.SaveBuffer();
+  }
+
+  private switch_case_multiline(range: VisualBufferRange) {
+    const first = this._editor.Text.elementAtPos(range.start.y)!;
+    let curr_node = first.next!;
+
+    first.value.CreateBufferAt(range.start.x, BufferTypeEnum.SPLITRIGHT);
+    let first_text = { val: first.value.ActiveZone! };
+    this.invert_cases(first_text);
+    first.value.UpdateActiveZone(first_text.val);
+    first.value.SaveBuffer();
+
+    for (let i = 1; i < range.end.y - range.start.y; i++) {
+      curr_node.value.CreateBufferAt(0, BufferTypeEnum.SPLITRIGHT);
+      let zone = { val: curr_node.value.ActiveZone! };
+      this.invert_cases(zone);
+      curr_node.value.UpdateActiveZone(zone.val);
+      curr_node.value.SaveBuffer();
+
+      curr_node = curr_node.next!;
+    }
+
+    const last = curr_node;
+    last.value.CreateBufferAt(range.end.x + 1, BufferTypeEnum.SPLITLEFT);
+    let last_text = { val: curr_node.value.ActiveZone! };
+    this.invert_cases(last_text);
+    last.value.UpdateActiveZone(last_text.val);
+  }
+
+  private invert_cases(text: { val: string }) {
+    let result = '';
+    for (const char of text.val) {
+      result += char === char.toUpperCase()
+        ? char.toLowerCase()
+        : char.toUpperCase();
+    }
+    text.val = result;
   }
 }

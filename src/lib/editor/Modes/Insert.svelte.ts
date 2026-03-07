@@ -66,7 +66,7 @@ export class InsertMode implements IEditorModes {
       this._editor.InsertBefore = true;
     }
 
-    this._editor.CurrentLine?.value.CreateBufferAt(this._editor.CursorPos);
+    this._editor.CurrentLine?.value.CreateBufferAt(this._editor.CursorPos, BufferTypeEnum.SPLITLEFT);
   }
 
   // a
@@ -81,7 +81,7 @@ export class InsertMode implements IEditorModes {
     }
 
     this._editor.InsertBefore = false;
-    this._editor.CurrentLine?.value.CreateBufferAt(this._editor.CursorPos + 1);
+    this._editor.CurrentLine?.value.CreateBufferAt(this._editor.CursorPos + 1, BufferTypeEnum.SPLITLEFT);
   }
 
   // I
@@ -96,19 +96,6 @@ export class InsertMode implements IEditorModes {
     if (this._editor.State != EditorStateEnum.INSERT) {
       this._editor.State = EditorStateEnum.INSERT;
     }
-  }
-
-  public switch_case() {
-    let range = this._editor.GetVisualBufferRange();
-
-  }
-
-  public to_upper() {
-    this._editor.CurrentLine?.value.Span[this._editor.CursorPos].toUpperCase();
-  }
-
-  public to_lower() {
-    this._editor.CurrentLine?.value.Span[this._editor.CursorPos].toUpperCase();
   }
 
   public update_ln_buffer(key: string) {
@@ -156,9 +143,8 @@ export class InsertMode implements IEditorModes {
 
       let prev = this._editor.CurrentLine.prev;
       if (prev) {
-        prev.value.CreateBufferAt(Math.max(prev.value.Span.length, 0), BufferTypeEnum.SPLITRIGHT);
-        prev.value.UpdateActiveZone(prev.value.BufferLeft?.trimEnd() + ln_text)
-        prev.value.UpdateBufferText("");
+        prev.value.CreateBufferAt(Math.max(prev.value.Span.length - 1, 0), BufferTypeEnum.SPLITRIGHT);
+        prev.value.UpdateActiveZone(ln_text);
 
         if (ln_text.length > 0) {
           prev.value.Span = prev.value.Span.replace("\n", "");
@@ -196,12 +182,11 @@ export class InsertMode implements IEditorModes {
     }
 
     const cursor_pos = this._editor.CursorPos + (this._editor.InsertBefore ? 0 : 1);
-    const str = this._editor.CurrentLine.value.Span.slice(cursor_pos, this._editor.CurrentLine.value.Span.length - 1) + "\n";
 
     this._editor.CurrentLine.value.SaveBuffer();
-    this._editor.CurrentLine.value.CreateBufferAt(cursor_pos);
-    this._editor.CurrentLine.value.UpdateActiveZone(this._editor.CurrentLine.value.Span.slice(0, cursor_pos) + "\n");
-    this._editor.CurrentLine.value.UpdateBufferText("");
+    this._editor.CurrentLine.value.CreateBufferAt(cursor_pos, BufferTypeEnum.SPLITRIGHT);
+    const split_str = this._editor.CurrentLine.value.ActiveZone!;
+    this._editor.CurrentLine.value.UpdateActiveZone("\n");
     this._editor.CurrentLine.value.SaveBuffer();
 
     let whitespace_count = 0;
@@ -215,7 +200,7 @@ export class InsertMode implements IEditorModes {
       break;
     }
 
-    const new_node = new LinkedListNode<GapBuffer>(new GapBuffer(this.get_indentation_spaces().repeat(whitespace_count) + str));
+    const new_node = new LinkedListNode<GapBuffer>(new GapBuffer(this.get_indentation_spaces().repeat(whitespace_count) + split_str));
     this._editor.CurrentLine?.insert_next(new_node);
     this._editor.CursorPos = whitespace_count;
     this._editor.InsertBefore = true;

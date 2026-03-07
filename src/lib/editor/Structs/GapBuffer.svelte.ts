@@ -15,6 +15,7 @@ export class GapBuffer {
   public get BufferLeft(): string | null {
     return this._bufferLeft;
   }
+
   private set BufferLeft(value) {
     this._bufferLeft = value;
   }
@@ -40,7 +41,7 @@ export class GapBuffer {
    * Split right: Left Buffer + Active Zone
    */
 
-  public CreateBufferAt(position: number, split: BufferTypeEnum.SPLITLEFT | BufferTypeEnum.SPLITRIGHT = BufferTypeEnum.SPLITLEFT) {
+  public CreateBufferAt(position: number, split: BufferTypeEnum.SPLITLEFT | BufferTypeEnum.SPLITRIGHT) {
     switch (split) {
       case BufferTypeEnum.SPLITLEFT:
         this.ActiveZone = this.Span.slice(0, position)
@@ -76,30 +77,6 @@ export class GapBuffer {
 
   public UpdateActiveZone(text: string) {
     this.ActiveZone = text;
-  }
-
-  public UpdateBufferText(text: string) {
-    switch (this.BufferType) {
-      case BufferTypeEnum.SPLITLEFT:
-        this.BufferRight = text;
-        break;
-      case BufferTypeEnum.SPLITRIGHT:
-        this.BufferLeft = text;
-        break;
-      default:
-        console.error("Invalid Buffer Type, Use Update Buffer Region Text")
-        break;
-    }
-  }
-
-  public UpdateBufferRegionText(left: string, right: string) {
-    if (this.BufferType !== BufferTypeEnum.REGION) {
-      console.error("Invalid Buffer Type, Use Update Buffer Text")
-      return;
-    }
-
-    this.BufferLeft = left;
-    this.BufferRight = right;
   }
 
   public SaveBuffer() {

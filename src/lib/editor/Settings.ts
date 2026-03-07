@@ -5,8 +5,8 @@ export enum IndentationFormatEnum {
 }
 
 export const Settings: IEditorSettings = {
-  WordRegexStart: /(\b\w)| ([-!$ %^&* ()_ +| ~=`{}\[\]:";'<>?,.\/])/g,
-  WordRegexEnd: /(\w\b)| ([-!$ %^&* ()_ +| ~=`{}\[\]:";'<>?,.\/])/g,
+  WordRegexStart: /(\b\w)|([\=><(;!@#$%^&*_+{\[\\"'`.\/,\-\|])/g,
+  WordRegexEnd: /(\w\b)|([\=><(;!@#$%^&*_+{\[\\"'`.\/,\-\|])/g,
   WORDRegexStart: /(?<!\S)(\S)/g,
   WORDRegexEnd: /(\S)(?<!\S)/g,
   FontSize: 16,

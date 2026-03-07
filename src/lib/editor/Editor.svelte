@@ -6,19 +6,20 @@
   import { BufferTypeEnum } from "./Structs/GapBuffer.svelte.ts";
 
   function should_highlight(line_pos: number, char_pos: number): boolean {
-    const [start_y, end_y] = [
-      Math.min(TextEditor.VisualBufferStart.y, TextEditor.VisualBufferEnd.y),
-      Math.max(TextEditor.VisualBufferStart.y, TextEditor.VisualBufferEnd.y),
-    ];
+    const range = TextEditor.GetVisualBufferRange();
 
-    const [start_x, end_x] =
-      start_y === TextEditor.VisualBufferStart.y
-        ? [TextEditor.VisualBufferStart.x, TextEditor.VisualBufferEnd.x]
-        : [TextEditor.VisualBufferEnd.x, TextEditor.VisualBufferStart.x];
+    if (
+      line_pos === range.start.y &&
+      line_pos === range.end.y &&
+      char_pos > range.end.x &&
+      range.start.x > range.end.x &&
+      char_pos <= range.start.x
+    )
+      return true;
 
-    if (line_pos < start_y || line_pos > end_y) return false;
-    if (line_pos === start_y && char_pos < start_x) return false;
-    if (line_pos === end_y && char_pos > end_x) return false;
+    if (line_pos < range.start.y || line_pos > range.end.y) return false;
+    if (line_pos === range.start.y && char_pos < range.start.x) return false;
+    if (line_pos === range.end.y && char_pos > range.end.x) return false;
 
     return true;
   }

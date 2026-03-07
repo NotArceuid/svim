@@ -1,3 +1,4 @@
+import { text } from "@sveltejs/kit";
 import { TextEditor, type Editor } from "./Editor.svelte.ts";
 import { Macros } from "./Macros.svelte.js";
 import { EditorStateEnum } from "./Modes/EditorModes.ts";
@@ -103,6 +104,7 @@ export class InputMapper {
     this.set("n", "Escape", () => this.Normal.switch_normal());
     this.set("n", "u", () => this.Normal.undo());
     this.set("n", "Controlr", () => this.Normal.redo());
+    this.set("n", "~", () => this.Visual.switch_case());
     this.set("n", "p", () => this.Normal.paste());
     this.set("n", "x", () => this.Normal.delete());
     this.set("n", "yy", () => {
@@ -121,9 +123,6 @@ export class InputMapper {
         this.Macros.PrimeMacro();
       }
     });
-    this.set("n", "@", () => {
-      this.Macros.BeforePlay = true;
-    });
   }
 
   private RegisterInputMode() {
@@ -135,7 +134,6 @@ export class InputMapper {
     this.set("i", "ArrowDown", () => this.Normal.down());
     this.set("i", "ArrowUp", () => this.Normal.up());
     this.set("i", "ArrowRight", () => this.Normal.right());
-    this.set("i", "~", () => this.Insert.switch_case());
     this.set("i", "Escape", () => this.Normal.switch_normal());
   }
 
@@ -203,6 +201,11 @@ export class InputMapper {
       return;
     }
 
+    if (key === "@") {
+      this.Macros.BeforePlay = true;
+      return;
+    }
+
     if (this.InputBuffer === "0") {
       let init_pos = TextEditor.CursorPos;
       let val = this.NormalInputMap.get("0");
@@ -257,7 +260,7 @@ export class InputMapper {
 
   private SingleAction(cursor_dif: Vector2) {
     if (this.Macros.BeforePlay) {
-      this.Macros.play_macro(this.InputBuffer);
+      this.Macros.play_macro(this.InputBuffer.charAt(this.InputBuffer.length - 1));
       return;
     }
 
@@ -273,17 +276,24 @@ export class InputMapper {
   }
 
   private MultiAction(cursor_dif: Vector2, count: string[]) {
-    if (this.Macros.BeforePlay) {
-      this.Macros.play_macro(this.InputBuffer);
+    let char = this.InputBuffer.slice(count[0].length, this.InputBuffer.length);
+    if (this.InputBuffer.endsWith('@')) {
       return;
     }
 
-    let char = this.InputBuffer.slice(count[0]?.length, this.InputBuffer.length);
+    if (this.Macros.BeforePlay) {
+      let char = this.InputBuffer.charAt(this.InputBuffer.length - 1);
+      for (let i = 0; i < Number(count[0]); i++) {
+        this.Macros.play_macro(char);
+      }
+
+      return;
+    }
+
     let func = this.NormalInputMap.get(char);
     if (func) {
       for (let i = 0; i < Number(count[0]); i++) {
         func();
-
         this.Macros.push(this.InputBuffer);
         cursor_dif.x = TextEditor.CursorPos - cursor_dif.x;
         cursor_dif.y = TextEditor.LinePos - cursor_dif.y;

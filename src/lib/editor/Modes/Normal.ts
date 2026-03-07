@@ -240,14 +240,16 @@ export class NormalMode implements IEditorModes {
   // gg
   public go_top() {
     this._editor.LinePos = 0;
-    this._editor.CursorPos = Math.min(this._editor.Text.head?.value.Span.length! - 1, this._editor.CursorPos);
+    const is_visual = this._editor.State === EditorStateEnum.VISUAL;
+    this._editor.CursorPos = Math.min(this._editor.Text.head?.value.Span.length! - 1 + (is_visual ? 0 : -1), this._editor.CursorPos);
     this._cursor_pos_ref = this._editor.CursorPos;
   }
 
   // G
   public go_bottom() {
     this._editor.LinePos = this._editor.Text.count();
-    this._editor.CursorPos = Math.min(this._editor.Text.tail()!.value.Span.length! - 1, this._editor.CursorPos);
+    const is_visual = this._editor.State === EditorStateEnum.VISUAL;
+    this._editor.CursorPos = Math.min(this._editor.Text.tail()!.value.Span.length! - 1 + (is_visual ? 0 : -1), this._editor.CursorPos);
     this._cursor_pos_ref = this._editor.CursorPos;
   }
 
