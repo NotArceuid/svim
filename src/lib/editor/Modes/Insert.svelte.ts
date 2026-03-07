@@ -1,5 +1,5 @@
-import { Editor } from "../Editor.svelte.ts";
 import { Settings } from "../Settings.ts";
+import { Editor } from "../Editor.svelte.ts";
 import { BufferTypeEnum, GapBuffer } from "../Structs/GapBuffer.svelte.ts";
 import { LinkedListNode } from "../Structs/LinkedList.svelte.ts";
 import { EditorStateEnum, type IEditorModes } from "./EditorModes.ts";
@@ -152,14 +152,13 @@ export class InsertMode implements IEditorModes {
       this._editor.CurrentLine.value.SaveBuffer();
 
       let ln_text = this._editor.CurrentLine.value.Span;
-      ln_text = ln_text.trimEnd();
       let prev_len = (this._editor.CurrentLine!.prev?.value.Span.length ?? 0) - 1;
 
       let prev = this._editor.CurrentLine.prev;
       if (prev) {
         prev.value.CreateBufferAt(Math.max(prev.value.Span.length, 0), BufferTypeEnum.SPLITRIGHT);
+        prev.value.UpdateActiveZone(prev.value.BufferLeft?.trimEnd() + ln_text)
         prev.value.UpdateBufferText("");
-        prev.value.UpdateActiveZone(prev.value.ActiveZone + ln_text)
 
         if (ln_text.length > 0) {
           prev.value.Span = prev.value.Span.replace("\n", "");

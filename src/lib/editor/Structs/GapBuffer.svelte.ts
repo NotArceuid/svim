@@ -50,8 +50,8 @@ export class GapBuffer {
         this.BufferType = BufferTypeEnum.SPLITLEFT;
         break;
       case BufferTypeEnum.SPLITRIGHT:
-        this.ActiveZone = this.Span.slice(0, position)
-        this.BufferLeft = this.Span.slice(position, this.Span.length) ?? "";
+        this.BufferLeft = this.Span.slice(0, position)
+        this.ActiveZone = this.Span.slice(position, this.Span.length) ?? "";
         this.BufferRight = null;
         this.BufferPresent = true;
         this.BufferType = BufferTypeEnum.SPLITRIGHT;
@@ -117,6 +117,9 @@ export class GapBuffer {
         this.Span = (this.BufferLeft ?? "") + (this.ActiveZone ?? "");
         break;
     }
+
+    if (!this.Span.endsWith('\n'))
+      this.Span += '\n';
 
     this.BufferPresent = false;
     this.BufferType = undefined;

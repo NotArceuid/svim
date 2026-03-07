@@ -1,7 +1,7 @@
 import { type Editor } from "../Editor.svelte.ts";
 import { Settings } from "../Settings.ts";
 import { BufferTypeEnum, GapBuffer } from "../Structs/GapBuffer.svelte.ts";
-import type { LinkedListNode } from "../Structs/LinkedList.svelte.ts";
+import type { LinkedList, LinkedListNode } from "../Structs/LinkedList.svelte.ts";
 import type { Vector2, VisualBufferRange } from "../Structs/Vector2.svelte.ts";
 import { EditorStateEnum, type IEditorModes } from "./EditorModes.ts";
 
@@ -90,62 +90,78 @@ export class VisualMode implements IEditorModes {
     this._editor.State = EditorStateEnum.NORMAL;
   }
 
+  // holy fuck this took me so long to impleemnt
   public delete(): void {
     const range = this._editor.GetVisualBufferRange();
-    const text = this._editor.Text.elementAtPos(Math.min(range.start.y, range.end.y))!;
     const copied_text = { val: "" };
 
     range.start.y === range.end.y ?
-      this.delete_within(text, range, copied_text) :
-      this.delete_multiline(range, text, copied_text);
+      this.delete_within(range, copied_text) :
+      this.delete_multiline(range, copied_text);
 
     if (Settings.SaveToClipboard)
       navigator.clipboard.writeText(copied_text.val);
 
     this._editor.TextBuffer = copied_text.val;
-    this._editor.CursorPos = this._editor.LinePos > this.VisualBufferStart.y ? this.VisualBufferStart.x : this.VisualBufferEnd.x;
-    this._editor.LinePos = this._editor.LinePos > this.VisualBufferStart.y ? this.VisualBufferStart.y : this.VisualBufferEnd.y;
+    this._editor.CursorPos = this._editor.LinePos >= range.start.y ? range.start.x : range.end.x;
+    this._editor.LinePos = this._editor.LinePos >= range.start.y ? range.start.y : range.end.y;
+
+    if (this._editor.Text.elementAtPos(0)?.value.Span === "") {
+      this._editor.Text.deleteHead();
+      this._editor.CurrentLine = this._editor.Text.elementAtPos(this._editor.LinePos - 1)!;
+    }
+
+    this._editor.CurrentLine = this._editor.Text.elementAtPos(this._editor.LinePos)!;
     this._editor.State = EditorStateEnum.NORMAL;
   }
 
-  private delete_multiline(range: VisualBufferRange, text: LinkedListNode<GapBuffer>, copied_text: { val: string }): void {
+  private delete_multiline(range: VisualBufferRange, copied_text: { val: string }): void {
+    const text = this._editor.Text.elementAtPos(Math.min(range.start.y, range.end.y))!;
+    const is_head = text.value === this._editor.Text.elementAtPos(0)?.value!;
+
     const first = text;
-    let iter = range.start.y;
+    let curr_node = first.next!;
+    first.value.CreateBufferAt(range.start.x, BufferTypeEnum.SPLITRIGHT);
+    copied_text.val += first.value.ActiveZone;
+    first.value.UpdateActiveZone("");
+    first.value.UpdateBufferText(text.value.BufferLeft + '\n');
+    first.value.SaveBuffer();
 
-    while (text.next) {
-      if (iter === range.start.y) {
-        text.value.CreateBufferAt(range.start.x, BufferTypeEnum.SPLITLEFT);
-        copied_text.val += text.value.BufferRight;
-        text.value.UpdateBufferText("");
-        text.value.SaveBuffer();
-      }
-      else if (iter === range.end.y) {
-        text.value.CreateBufferAt(range.end.x + 1, BufferTypeEnum.SPLITRIGHT);
-        copied_text.val += text.value.ActiveZone;
-        text.value.UpdateActiveZone("");
-
-        first.value.CreateBufferAt(range.start.x, BufferTypeEnum.SPLITLEFT);
-        first.value.UpdateBufferText(text.value.BufferLeft ?? "");
-        first.value.SaveBuffer();
-
-        text.delete();
-        break;
-      } else {
-        copied_text.val += text.value.Span;
-        text.delete();
-        this._editor.CurrentLine = this._editor.CurrentLine?.next?.next!;
-      }
-
-      text = text.next;
-      iter++;
+    for (let i = 1; i < range.end.y - range.start.y; i++) {
+      copied_text.val += curr_node.value.Span;
+      curr_node.delete();
+      curr_node = curr_node.next!;
     }
+
+    const last = curr_node;
+    last.value.CreateBufferAt(range.end.x + 1, BufferTypeEnum.SPLITLEFT);
+    const buffer_right = last.value.BufferRight;
+    copied_text.val += last.value.ActiveZone;
+    last.value.UpdateActiveZone("");
+
+    first.value.CreateBufferAt(range.start.x, BufferTypeEnum.SPLITRIGHT);
+    if (first.value.Span === '\n' && !is_head) {
+      first.delete();
+    } else {
+      first.value.UpdateActiveZone(buffer_right === '' ? '\n' : buffer_right ?? '\n');
+      first.value.SaveBuffer();
+
+      if (is_head && range.start.x === 0)
+        this._editor.Text.deleteHead();
+    }
+
+    last.value.SaveBuffer();
+    if (range.start.x !== 0)
+      last.delete();
   }
 
-  private delete_within(text: LinkedListNode<GapBuffer>, range: VisualBufferRange, copied_text: { val: string }): void {
-    text.value.CreateBufferRegion(range.start.x, range.end.x + 1);
-    copied_text.val += text.value.ActiveZone;
-    text.value.UpdateActiveZone("");
-    text.value.SaveBuffer();
+
+  private delete_within(range: VisualBufferRange, copied_text: { val: string }): void {
+    let val = this._editor.Text.elementAtPos(Math.min(range.start.y, range.end.y))!;
+    val.value.CreateBufferRegion(range.start.x, range.end.x + 1);
+    copied_text.val += val.value.ActiveZone;
+    val.value.UpdateActiveZone("");
+    val.value.SaveBuffer();
   }
 
   public undo_delete() {

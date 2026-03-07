@@ -3,7 +3,7 @@ export class LinkedListNode<T> {
   public next: LinkedListNode<T> | null = $state(null);
   public prev: LinkedListNode<T> | null = $state(null);
 
-  public insert_prev(node: LinkedListNode<T>) {
+  public insert_prev(node: LinkedListNode<T>): LinkedListNode<T> {
     node.prev = this.prev;
     node.next = this;
 
@@ -12,8 +12,10 @@ export class LinkedListNode<T> {
     }
 
     this.prev = node;
+    return node;
   }
 
+  // HORRIBLE FUNCTION, TRY NOT TO USE THIS
   public delete() {
     if (this.prev) {
       this.prev.next = this.next;
@@ -24,7 +26,7 @@ export class LinkedListNode<T> {
     }
   }
 
-  public insert_next(node: LinkedListNode<T>) {
+  public insert_next(node: LinkedListNode<T>): LinkedListNode<T> {
     node.prev = this;
     node.next = this.next;
 
@@ -33,6 +35,7 @@ export class LinkedListNode<T> {
     }
 
     this.next = node;
+    return node;
   }
 
   constructor(value: T) {

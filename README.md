@@ -6,12 +6,13 @@ Recreation of the vi text editor in svelte
 - Insert mode 
 - Visual mode 
 - yank/paste
+- Macros 
 
 ## Planned Features
 - Options mode (c/d)
+- Find/next
 - Replace
 - Multi Insert
-- Macros 
 - Find and replace
 - Undo/Redo
 - Marks
@@ -19,4 +20,6 @@ Recreation of the vi text editor in svelte
 - Visual block mode
 
 ## Notes: 
-The regex used to determine word and WORD (w/e/b/B) is not 100% accurate to the original vi editor
+This is only a RECREATION of the vi text editor and not a 1 to 1 exact copy 
+don't expect your favourite mystical keybindings to work as it would on vi.
+

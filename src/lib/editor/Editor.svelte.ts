@@ -1,4 +1,5 @@
 import { InputMapper } from "./Input.svelte.ts";
+import type { RecordingMacro } from "./Macros.svelte.ts";
 import { EditorStateEnum } from "./Modes/EditorModes.ts";
 import { GapBuffer } from "./Structs/GapBuffer.svelte.ts";
 import { LinkedList, LinkedListNode } from "./Structs/LinkedList.svelte.ts";
@@ -16,6 +17,10 @@ export class Editor {
   private _linePos = $state(0);
   public get LinePos() {
     return this._linePos;
+  }
+
+  public get ActiveMacro(): RecordingMacro | undefined {
+    return this._inputMapper.Macros.ActiveMacro;
   }
 
   public set LinePos(val: number) {
@@ -100,7 +105,9 @@ export const TextEditor = new Editor(`Lorem ipsum dolor sit amet adipiscing.
     this.InputMap.set("k", () => this.Normal.up());
     this.InputMap.set("l", () => this.Normal.right());
     this.InputMap.set("$", () => this.Normal.end_line());
-    this.InputMap.set("0", () => this.Normal.start_line()); this.InputMap.set("w", () => this.Normal.go_start_word()); this.InputMap.set("e", () => this.Normal.go_end_word());
+    this.InputMap.set("0", () => this.Normal.start_line());
+    this.InputMap.set("w", () => this.Normal.go_start_word());
+    this.InputMap.set("e", () => this.Normal.go_end_word());
     this.InputMap.set("W", () => this.Normal.go_start_WORD());
     this.InputMap.set("E", () => this.Normal.go_end_WORD());
     this.InputMap.set("b", () => this.Normal.bStart());

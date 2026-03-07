@@ -92,8 +92,13 @@
       </span>
     </div>
   {/each}
-  <span>{TextEditor.State}</span>
-  <span>{TextEditor.LinePos}:{TextEditor.CursorPos}</span>
+  {#if !TextEditor.ActiveMacro}
+    <span>{TextEditor.State}</span>
+    <span>{TextEditor.LinePos}:{TextEditor.CursorPos}</span>
+    <span>{TextEditor.InputBuffer}</span>
+  {:else}
+    <span>Recording: @{TextEditor.ActiveMacro.Name}</span>
+  {/if}
 </div>
 
 <style>

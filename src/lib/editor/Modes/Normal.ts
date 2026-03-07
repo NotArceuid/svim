@@ -63,7 +63,6 @@ export class NormalMode implements IEditorModes {
     }
   }
 
-  // TODO: replace this with a much performant .length field
   public down() {
     if (this._editor.LinePos == this._editor.Text.count())
       return;
@@ -229,7 +228,7 @@ export class NormalMode implements IEditorModes {
     let current_line = this._editor.Text.elementAtPos(this._editor.LinePos);
     if (!current_line) return;
 
-    if (current_line.value.Span.indexOf("\n") && this._editor.State !== EditorStateEnum.VISUAL) {
+    if (current_line.value.Span.endsWith("\n") && this._editor.State !== EditorStateEnum.VISUAL) {
       this._editor.CursorPos = current_line.value.Span.length - 2;
     } else {
       this._editor.CursorPos = current_line.value.Span.length - 1;
@@ -254,16 +253,22 @@ export class NormalMode implements IEditorModes {
 
   // ;
   public next() {
-
+    if (!this.IsFinding)
+      return;
   }
 
   // ,
   public prev() {
-
+    if (!this.IsFinding)
+      return;
   }
 
   // f
   public find() {
+    this.IsFinding = true;
+  }
+
+  public find_backwards() {
     this.IsFinding = true;
   }
 
@@ -346,38 +351,54 @@ export class NormalMode implements IEditorModes {
   }
 
   public paste() {
-    const current_line = this._editor.LinePos;
     const cursor_pos = this._editor.CursorPos;
-
-    let currentNode = this._editor.Text.elementAtPos(current_line)!;
-    const paste_content = this._editor.TextBuffer;
-
-    let lines = paste_content.match(/[^\n]*\n|[^\n]+/g);
+    let currentNode = this._editor.Text.elementAtPos(this._editor.LinePos)!;
+    const lines = this._editor.TextBuffer.match(/.*\n|.+$/g);
     if (!lines) return;
 
-    if (lines.length === 1 && !lines[0].endsWith('\n')) {
-      currentNode.value.CreateBufferRegion(cursor_pos, cursor_pos + 1);
+    if (lines.length === 1) {
+      this.PasteWithin(lines, currentNode, cursor_pos);
+      return;
+    }
+
+    currentNode.value.CreateBufferAt(cursor_pos, BufferTypeEnum.SPLITRIGHT);
+    const tail = currentNode.value.ActiveZone ?? "";
+    currentNode.value.UpdateActiveZone(lines[0]);
+    currentNode.value.SaveBuffer();
+
+    for (let i = 1; i < lines.length - 1; i++) {
+      currentNode = currentNode.insert_next(
+        new LinkedListNode<GapBuffer>(new GapBuffer(lines[i]))
+      );
+    }
+
+    const lastLine = lines[lines.length - 1];
+    if (lastLine.endsWith('\n')) {
+      currentNode = currentNode.insert_next(
+        new LinkedListNode<GapBuffer>(new GapBuffer(lastLine))
+      );
+    } else {
+      currentNode.insert_next(
+        new LinkedListNode<GapBuffer>(new GapBuffer(lastLine + tail))
+      );
+    }
+
+    this._editor.CurrentLine = this._editor.Text.elementAtPos(this._editor.LinePos)!;
+  }
+
+  private PasteWithin(lines: RegExpMatchArray, currentNode: LinkedListNode<GapBuffer>, cursor_pos: number) {
+    if (!lines[0].endsWith('\n')) {
+      currentNode.value.CreateBufferRegion(cursor_pos, cursor_pos);
       currentNode.value.UpdateActiveZone(lines[0]);
 
       this._editor.CursorPos = cursor_pos + lines[0].length - 1;
       currentNode.value.SaveBuffer();
-      return;
     }
 
     if (lines[0].endsWith('\n')) {
       currentNode.insert_next(new LinkedListNode<GapBuffer>(new GapBuffer(lines[0])));
       this._editor.LinePos++;
-      return;
     }
-
-    // Mulitline paste 
-    // we can assume the first and each preceding lines - 1 ends with a \n character
-    currentNode.value.CreateBufferRegion(cursor_pos, cursor_pos);
-
-
-
-    this._editor.LinePos = current_line + (lines.length - 1);
-    this._editor.CursorPos = lines[lines.length - 1].length;
   }
 
   public delete() {

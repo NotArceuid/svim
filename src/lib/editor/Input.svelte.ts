@@ -1,7 +1,8 @@
 import { TextEditor, type Editor } from "./Editor.svelte.ts";
+import { Macros } from "./Macros.svelte.js";
 import { EditorStateEnum } from "./Modes/EditorModes.ts";
 import { InsertMode } from "./Modes/Insert.svelte.ts";
-import { NormalMode } from "./Modes/NormalMode.ts";
+import { NormalMode } from "./Modes/Normal.ts";
 import { VisualMode } from "./Modes/Visual.svelte.ts";
 import type { Vector2 } from "./Structs/Vector2.svelte.ts";
 
@@ -9,9 +10,10 @@ export class InputMapper {
   public Normal: NormalMode;
   public Insert: InsertMode;
   public Visual: VisualMode;
+  public Macros: Macros;
 
   private _inputBuffer: string = $state("");
-  private set InputBuffer(val) {
+  public set InputBuffer(val) {
     this._inputBuffer = val;
   }
 
@@ -28,8 +30,45 @@ export class InputMapper {
     this.Normal = new NormalMode(editor);
     this.Insert = new InsertMode(editor);
     this.Visual = new VisualMode(editor);
+    this.Macros = new Macros(this);
 
-    // lol
+    this.RegisterNormalMode();
+    this.RegisterInputMode();
+    this.RegisterVisualMode();
+
+    editor.EditorStateEvent.Add((state) => {
+      this.InputBuffer = "";
+      switch (state) {
+        case EditorStateEnum.NORMAL:
+          this.CurrentInputMap = this.NormalInputMap;
+          break;
+        case EditorStateEnum.INSERT:
+          this.CurrentInputMap = this.InsertInputMap;
+          break;
+        case EditorStateEnum.VISUAL:
+          this.CurrentInputMap = this.VisualInputMap;
+          break;
+        case EditorStateEnum.OPTION:
+          this.CurrentInputMap = this.OptionInputMap;
+          break;
+      }
+    })
+  }
+
+  private RegisterVisualMode() {
+    this.set("n", "v", () => this.Visual.start_track());
+    this.set("v", "y", () => this.Visual.yank());
+    this.set("v", "x", () => this.Visual.delete());
+    this.set("v", "d", () => this.Visual.delete());
+    this.set("v", "c", () => this.Visual.delete());
+    this.set("v", "Escape", () => {
+      this.Visual.clear_buffer();
+      this.Visual.end_track();
+      this.Macros.clear_macro();
+    });
+  }
+
+  private RegisterNormalMode() {
     this.set("n", "h", () => this.Normal.left());
     this.set("n", "j", () => this.Normal.down());
     this.set("n", "k", () => this.Normal.up());
@@ -54,10 +93,11 @@ export class InputMapper {
     this.set("n", "G", () => this.Normal.go_bottom());
     this.set("n", "gg", () => this.Normal.go_top());
     this.set("n", "f", () => this.Normal.find());
+    this.set("n", "Shiftf", () => this.Normal.find_backwards());
     this.set("n", ";", () => this.Normal.next());
     this.set("n", ",", () => this.Normal.prev());
-    this.set("n", "O", () => this.Insert.insert_line_above())
-    this.set("n", "o", () => this.Insert.insert_line_below())
+    this.set("n", "O", () => this.Insert.insert_line_above());
+    this.set("n", "o", () => this.Insert.insert_line_below());
     this.set("n", "i", () => this.Insert.insert_start());
     this.set("n", "a", () => this.Insert.insert_end());
     this.set("n", "Escape", () => this.Normal.switch_normal());
@@ -73,53 +113,32 @@ export class InputMapper {
       this.Visual.yank();
       this.Visual.end_track();
     });
+    this.set("n", "q", () => {
+      if (this.Macros.ActiveMacro) {
+        this.Macros.ActiveMacro.Value.pop();
+        this.Macros.stop_record();
+      } else {
+        this.Macros.PrimeMacro();
+      }
+    });
+    this.set("n", "@", () => {
+      this.Macros.BeforePlay = true;
+    });
+  }
 
-    // Insert Mode
-    this.set("i", "i", () => this.Insert.insert_start())
-    this.set("i", "I", () => this.Insert.insert_start_line())
-    this.set("i", "a", () => this.Insert.insert_end())
-    this.set("i", "A", () => this.Insert.insert_end_line())
+  private RegisterInputMode() {
+    this.set("i", "i", () => this.Insert.insert_start());
+    this.set("i", "I", () => this.Insert.insert_start_line());
+    this.set("i", "a", () => this.Insert.insert_end());
+    this.set("i", "A", () => this.Insert.insert_end_line());
     this.set("i", "ArrowLeft", () => this.Normal.left());
     this.set("i", "ArrowDown", () => this.Normal.down());
     this.set("i", "ArrowUp", () => this.Normal.up());
     this.set("i", "ArrowRight", () => this.Normal.right());
     this.set("i", "~", () => this.Insert.switch_case());
     this.set("i", "Escape", () => this.Normal.switch_normal());
-
-    // Visual mode
-    this.set("n", "v", () => this.Visual.start_track());
-    this.set("v", "Escape", () => {
-      this.Visual.clear_buffer();
-      this.Visual.end_track()
-    });
-
-    this.set("v", "y", () => this.Visual.yank());
-    this.set("v", "x", () => this.Visual.delete());
-    this.set("v", "d", () => this.Visual.delete());
-
-    this.set("v", "c", () => this.Visual.delete());
-    // Optional Mode
-
-    editor.EditorStateEvent.Add((state) => {
-      this.InputBuffer = "";
-      switch (state) {
-        case EditorStateEnum.NORMAL:
-          this.CurrentInputMap = this.NormalInputMap;
-          break;
-        case EditorStateEnum.INSERT:
-          this.CurrentInputMap = this.InsertInputMap;
-          break;
-        case EditorStateEnum.VISUAL:
-          this.CurrentInputMap = this.VisualInputMap;
-          break;
-        case EditorStateEnum.OPTION:
-          this.CurrentInputMap = this.OptionInputMap;
-          break;
-      }
-    })
   }
 
-  // similar to nvim
   public set(mode: string, key: string, action: () => void) {
     switch (mode) {
       case 'n':
@@ -147,6 +166,7 @@ export class InputMapper {
       this.InputBuffer = "";
       let switch_modes = this.CurrentInputMap.get("Escape");
       switch_modes?.();
+      this.Macros.push(key);
     }
 
     switch (TextEditor.State) {
@@ -161,9 +181,6 @@ export class InputMapper {
         break;
       case EditorStateEnum.COMMAND:
         break;
-      case EditorStateEnum.OPTION:
-        this.HandleOptionMode(key);
-        break;
     }
   }
 
@@ -176,10 +193,27 @@ export class InputMapper {
       this.Normal.stop_find();
     }
 
+
+    if (this.Macros.IsMacroPrimed) {
+      if (!key.match(/[a-zA-Z]/))
+        return;
+
+      this.Macros.create_macro(key);
+      this.InputBuffer = "";
+      return;
+    }
+
     if (this.InputBuffer === "0") {
+      let init_pos = TextEditor.CursorPos;
       let val = this.NormalInputMap.get("0");
       val?.();
       this.InputBuffer = "";
+
+      if (TextEditor.State == EditorStateEnum.VISUAL) {
+        this.Visual.update_buffer({ x: TextEditor.CursorPos - init_pos, y: 0 });
+      }
+
+      this.Macros.push(key);
       return;
     }
 
@@ -192,6 +226,8 @@ export class InputMapper {
 
   private HandleInsertMode(key: string) {
     this.Insert.update_ln_buffer(key);
+    if (this.Macros.ActiveMacro)
+      this.Macros.push(key);
   }
 
   private HandleVisualMode(key: string) {
@@ -203,43 +239,57 @@ export class InputMapper {
     }
   }
 
-  // Here using normal input map since multi action can occur with normal mode related actions only
   private TryMultiAction(): Vector2 {
     let count = this.InputBuffer.match("[0-9]*");
-
     let cursor_dif: Vector2 = {
       x: TextEditor.CursorPos,
       y: TextEditor.LinePos
     }
 
     if (count?.[0] === "") {
-      let func = this.NormalInputMap.get(this.InputBuffer);
-      if (func) {
-        func();
-        cursor_dif.x = TextEditor.CursorPos - cursor_dif.x;
-        cursor_dif.y = TextEditor.LinePos - cursor_dif.y;
-
-        this.InputBuffer = "";
-      }
+      this.SingleAction(cursor_dif);
     } else if (count) {
-      let char = this.InputBuffer.slice(count[0]?.length, this.InputBuffer.length);
-      let func = this.NormalInputMap.get(char);
-      if (func) {
-        for (let i = 0; i < Number(count[0]); i++) {
-          func();
-
-          cursor_dif.x = TextEditor.CursorPos - cursor_dif.x;
-          cursor_dif.y = TextEditor.LinePos - cursor_dif.y;
-        }
-      }
-
-      this.InputBuffer = "";
+      this.MultiAction(cursor_dif, count);
     }
 
     return cursor_dif;
   }
 
-  private HandleOptionMode(key: string) {
-    console.log("Not Implemented yet");
+  private SingleAction(cursor_dif: Vector2) {
+    if (this.Macros.BeforePlay) {
+      this.Macros.play_macro(this.InputBuffer);
+      return;
+    }
+
+    let func = this.NormalInputMap.get(this.InputBuffer);
+    if (func) {
+      this.Macros.push(this.InputBuffer);
+      func();
+      cursor_dif.x = TextEditor.CursorPos - cursor_dif.x;
+      cursor_dif.y = TextEditor.LinePos - cursor_dif.y;
+
+      this.InputBuffer = "";
+    }
+  }
+
+  private MultiAction(cursor_dif: Vector2, count: string[]) {
+    if (this.Macros.BeforePlay) {
+      this.Macros.play_macro(this.InputBuffer);
+      return;
+    }
+
+    let char = this.InputBuffer.slice(count[0]?.length, this.InputBuffer.length);
+    let func = this.NormalInputMap.get(char);
+    if (func) {
+      for (let i = 0; i < Number(count[0]); i++) {
+        func();
+
+        this.Macros.push(this.InputBuffer);
+        cursor_dif.x = TextEditor.CursorPos - cursor_dif.x;
+        cursor_dif.y = TextEditor.LinePos - cursor_dif.y;
+      }
+    }
+
+    this.InputBuffer = "";
   }
 }
