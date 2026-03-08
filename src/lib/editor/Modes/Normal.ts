@@ -42,28 +42,24 @@ export class NormalMode implements IEditorModes {
   }
 
   public up() {
-    if (this._editor.LinePos === 0)
-      return;
+    if (this._editor.LinePos === 0) return;
 
     const prev_line = this._editor.CurrentLine?.prev;
     const prev_len = this.effective_length(prev_line?.value.Span ?? '');
 
-    if (this._editor.CursorPos > this._cursor_pos_ref)
-      this._cursor_pos_ref = this._editor.CursorPos;
+    this._cursor_pos_ref = Math.max(this._cursor_pos_ref, this._editor.CursorPos);
 
     this._editor.LinePos--;
     this._editor.CursorPos = Math.min(this._cursor_pos_ref, Math.max(0, prev_len - 1));
   }
 
   public down() {
-    if (this._editor.LinePos === this._editor.Text.count())
-      return;
+    if (this._editor.LinePos === this._editor.Text.length - 1 || this._editor.Text.length === 1) return;
 
     const next_line = this._editor.CurrentLine?.next;
     const next_len = this.effective_length(next_line?.value.Span ?? '');
 
-    if (this._editor.CursorPos > this._cursor_pos_ref)
-      this._cursor_pos_ref = this._editor.CursorPos;
+    this._cursor_pos_ref = Math.max(this._cursor_pos_ref, this._editor.CursorPos);
 
     this._editor.LinePos++;
     this._editor.CursorPos = Math.min(this._cursor_pos_ref, Math.max(0, next_len - 1));
@@ -212,7 +208,7 @@ export class NormalMode implements IEditorModes {
 
   // G
   public go_bottom() {
-    this._editor.LinePos = this._editor.Text.count();
+    this._editor.LinePos = this._editor.Text.length - 1;
     const is_visual = this._editor.State === EditorStateEnum.VISUAL;
     this._editor.CursorPos = Math.min(this._editor.Text.tail()!.value.Span.length! - 1 + (is_visual ? 0 : -1), this._editor.CursorPos);
     this._cursor_pos_ref = this._editor.CursorPos;
@@ -413,10 +409,13 @@ export class NormalMode implements IEditorModes {
       currentNode = currentNode.insert_next(
         new LinkedListNode<GapBuffer>(new GapBuffer(lastLine))
       );
+      this._editor.Text.length++;
     } else {
       currentNode.insert_next(
         new LinkedListNode<GapBuffer>(new GapBuffer(lastLine + tail))
       );
+
+      this._editor.Text.length++;
     }
 
     this._editor.CurrentLine = this._editor.Text.elementAtPos(this._editor.LinePos)!;

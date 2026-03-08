@@ -3,219 +3,163 @@ export class LinkedListNode<T> {
   public next: LinkedListNode<T> | null = $state(null);
   public prev: LinkedListNode<T> | null = $state(null);
 
+  constructor(value: T) {
+    this.value = $state(value);
+  }
+
   public insert_prev(node: LinkedListNode<T>): LinkedListNode<T> {
     node.prev = this.prev;
     node.next = this;
-
-    if (this.prev !== null) {
-      this.prev.next = node;
-    }
-
+    if (this.prev !== null) this.prev.next = node;
     this.prev = node;
     return node;
-  }
-
-  // HORRIBLE FUNCTION, TRY NOT TO USE THIS
-  public delete() {
-    if (this.prev) {
-      this.prev.next = this.next;
-    }
-
-    if (this.next) {
-      this.next.prev = this.prev;
-    }
   }
 
   public insert_next(node: LinkedListNode<T>): LinkedListNode<T> {
     node.prev = this;
     node.next = this.next;
-
-    if (this.next !== null) {
-      this.next.prev = node;
-    }
-
+    if (this.next !== null) this.next.prev = node;
     this.next = node;
     return node;
   }
 
-  constructor(value: T) {
-    this.value = $state(value);
+  // HORRIBLE FUNCTION, TRY NOT TO USE THIS
+  public delete(): void {
+    if (this.prev) this.prev.next = this.next;
+    if (this.next) this.next.prev = this.prev;
+    this.prev = null;
+    this.next = null;
   }
 }
 
 export class LinkedList<T> implements Iterable<T> {
-  [Symbol.iterator](): Iterator<T, any, any> {
+  public head: LinkedListNode<T> | null = $state(null);
+  public length: number = $state(0);
+
+  [Symbol.iterator](): Iterator<T> {
     let cur = this.head;
     return {
-      next: function(...[value]: [] | [any]): IteratorResult<T, any> {
+      next(): IteratorResult<T> {
         if (cur) {
           const value = cur.value;
           cur = cur.next;
-          return { value: value, done: false }
-        } else {
-          return { value: undefined, done: true }
+          return { value, done: false };
         }
+        return { value: undefined as any, done: true };
       }
-    }
+    };
   }
 
-  public head: LinkedListNode<T> | null = $state(null);
   tail(): LinkedListNode<T> | null {
-    if (this.head == null) {
-      return null;
-    }
-
-    let current = this.head;
-    while (current.next) {
-      current = current.next;
-    }
-
-    return current;
-  }
-
-  count(): number {
-    if (!this.head) return 0;
-    let node = this.head;
-    let count = 0;
-    while (node.next) {
-      count++;
-      node = node.next;
-    }
-
-    return count;
+    if (!this.head) return null;
+    let curr = this.head;
+    while (curr.next) curr = curr.next;
+    return curr;
   }
 
   prepend(val: T): void {
     const node = new LinkedListNode(val);
     node.next = this.head;
     node.prev = null;
-
+    if (this.head) this.head.prev = node;
     this.head = node;
+    this.length++;
   }
 
   append(val: T): void {
-    let node = new LinkedListNode(val);
+    const node = new LinkedListNode(val);
     if (!this.head) {
       this.head = node;
+      this.length++;
       return;
     }
-
-    let curr_node = this.head;
-    while (curr_node.next) {
-      curr_node = curr_node.next;
-    }
-
-    curr_node.next = node;
-    node.prev = curr_node;
-  }
-
-  deleteHead(): void {
-    if (this.head) {
-      this.head = this.head.next;
-    }
-  }
-
-  deleteEnd(): void {
-    let last = this.tail();
-    if (!last)
-      return;
-
-    last.next = null;
-  }
-
-  elementAt(val: T): number | null {
-    if (!this.head) return null;
-
-    let idx = 0;
-    while (this.head.value !== val) {
-      idx++;
-    }
-
-    return idx;
+    const last = this.tail()!;
+    last.next = node;
+    node.prev = last;
+    this.length++;
   }
 
   elementAtPos(idx: number): LinkedListNode<T> | null {
-    if (!this.head || idx < 0)
-      return null;
-
+    if (!this.head || idx < 0) return null;
     let curr = this.head;
-
     for (let i = 0; i < idx; i++) {
-      if (!curr.next)
-        return null;
+      if (!curr.next) return null;
       curr = curr.next;
     }
-
     return curr;
   }
 
-  insertAt(pos: number, val: T): void {
-    let node = new LinkedListNode(val);
-    if (!this.head) {
-      this.head = node;
-      return;
+  elementAt(val: T): number | null {
+    let curr = this.head;
+    let idx = 0;
+    while (curr) {
+      if (curr.value === val) return idx;
+      curr = curr.next;
+      idx++;
     }
+    return null;
+  }
 
-    if (pos === 0) {
+  insertAt(pos: number, val: T): void {
+    if (pos <= 0 || !this.head) {
       this.prepend(val);
       return;
     }
-
-    let curr = this.head;
-    for (let i = 0; i < pos; i++) {
-      if (i !== pos - 1) {
-        curr.next;
-        continue;
-      }
-
-      if (i === pos - 1) {
-        let next = curr.next;
-        node.next = next;
-        curr.next = node;
-      }
+    if (pos >= this.length) {
+      this.append(val);
+      return;
     }
+    const before = this.elementAtPos(pos - 1)!;
+    const node = new LinkedListNode(val);
+    before.insert_next(node);
+    this.length++;
+  }
 
-    if (!curr.next) return;
-    curr.next = curr.next.next;
+  deleteHead(): void {
+    if (!this.head) return;
+    this.head = this.head.next;
+    if (this.head) this.head.prev = null;
+    this.length--;
+  }
+
+  deleteEnd(): void {
+    if (!this.head) return;
+    const last = this.tail()!;
+    if (last.prev) {
+      last.prev.next = null;
+    } else {
+      this.head = null;
+    }
+    this.length--;
   }
 
   deleteAt(idx: number): void {
     if (!this.head) return;
-
-    if (idx === 0) {
-      this.head = this.head.next;
-      return;
-    }
-
-    let curr = this.head;
-    for (let i = 0; i < idx - 1; i++) {
-      if (!curr.next) return;
-      curr = curr.next;
-    }
-
-    if (!curr.next) return;
-    curr.next = curr.next.next;
+    if (idx === 0) { this.deleteHead(); return; }
+    const target = this.elementAtPos(idx);
+    if (!target) return;
+    target.delete();
+    this.length--;
   }
 
-  delete(val: T) {
-    if (!this.head) return;
-    if (this.head.value === val) {
-      this.head = this.head.next;
-      return;
-    }
-
+  delete(val: T): void {
     let curr = this.head;
-    while (curr.next) {
-      if (curr.next.value === val) {
-        curr.next = curr.next.next;
+    while (curr) {
+      if (curr.value === val) {
+        if (curr === this.head) {
+          this.deleteHead();
+        } else {
+          curr.delete();
+          this.length--;
+        }
         return;
       }
-
       curr = curr.next;
     }
   }
 
-  clear() {
+  clear(): void {
     this.head = null;
+    this.length = 0;
   }
 }

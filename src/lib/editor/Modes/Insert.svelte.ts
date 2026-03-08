@@ -25,6 +25,7 @@ export class InsertMode implements IEditorModes {
 
     let node = new LinkedListNode(new GapBuffer(this.get_indentation_spaces().repeat(whitespace_count) + "\n"));
     curr_line?.insert_next(node);
+    this._editor.Text.length++;
     this._editor.LinePos++;
     this._editor.CursorPos = Math.max(node.value.Span.length - 2, 0);
     whitespace_count > 0 ? this.insert_end() : this.insert_start();
@@ -49,6 +50,7 @@ export class InsertMode implements IEditorModes {
 
     let node = new LinkedListNode(new GapBuffer(this.get_indentation_spaces().repeat(whitespace_count) + "\n"));
     curr_line?.insert_prev(node);
+    this._editor.Text.length++;
     this._editor.CursorPos = Math.max(node.value.Span.length - 2, 0);
     this._editor.CurrentLine = this._editor.CurrentLine?.prev ?? null;
 
@@ -127,8 +129,7 @@ export class InsertMode implements IEditorModes {
   }
 
   private backspace() {
-    if (!this._editor.CurrentLine)
-      return;
+    if (!this._editor.CurrentLine) return;
 
     if (this._editor.CursorPos === 0 && !this._editor.InsertBefore) {
       this._editor.CursorPos = 1;
@@ -138,40 +139,35 @@ export class InsertMode implements IEditorModes {
     if (this._editor.CursorPos === 0 && this._editor.CurrentLine.prev) {
       this._editor.CurrentLine.value.SaveBuffer();
 
-      let ln_text = this._editor.CurrentLine.value.Span;
-      let prev_len = (this._editor.CurrentLine!.prev?.value.Span.length ?? 0) - 1;
+      const dead = this._editor.CurrentLine;
+      const prev = dead.prev!;
+      const prev_len = Math.max(0, prev.value.Span.length - 1);
+      const target_y = this._editor.LinePos - 1;
+      const ln_text = dead.value.Span;
 
-      let prev = this._editor.CurrentLine.prev;
-      if (prev) {
-        prev.value.CreateBufferAt(Math.max(prev.value.Span.length - 1, 0), BufferTypeEnum.SPLITRIGHT);
-        prev.value.UpdateActiveZone(ln_text);
-
-        if (ln_text.length > 0) {
-          prev.value.Span = prev.value.Span.replace("\n", "");
-        }
-
-        prev.value.SaveBuffer();
+      prev.value.CreateBufferAt(Math.max(prev.value.Span.length - 1, 0), BufferTypeEnum.SPLITRIGHT);
+      prev.value.UpdateActiveZone(ln_text);
+      if (ln_text.length > 0) {
+        prev.value.Span = prev.value.Span.replace("\n", "");
       }
 
-      this._editor.CursorPos = prev_len;
-      this._editor.CurrentLine.delete();
-      this._editor.LinePos--;
+      prev.value.SaveBuffer();
+      dead.delete();
+      this._editor.Text.length--;
+      this._editor.seekTo(target_y, prev_len);
+
       this._editor.State = EditorStateEnum.NORMAL;
       this._editor.InsertBefore ? this.insert_start() : this.insert_end();
-
       return;
     }
 
-    let text = this._editor.CurrentLine.value.ActiveZone?.slice(0, -1) ?? "";
-    this._editor.CurrentLine.value.UpdateActiveZone(text)
+    const text = this._editor.CurrentLine.value.ActiveZone?.slice(0, -1) ?? "";
+    this._editor.CurrentLine.value.UpdateActiveZone(text);
 
-    if (this._editor.LinePos === 0 && this._editor.CursorPos === 0) {
-      return;
-    }
+    if (this._editor.LinePos === 0 && this._editor.CursorPos === 0) return;
 
     this._editor.CursorPos--;
   }
-
   public undo_backspace() {
 
   }
@@ -202,6 +198,7 @@ export class InsertMode implements IEditorModes {
 
     const new_node = new LinkedListNode<GapBuffer>(new GapBuffer(this.get_indentation_spaces().repeat(whitespace_count) + split_str));
     this._editor.CurrentLine?.insert_next(new_node);
+    this._editor.Text.length++;
     this._editor.CursorPos = whitespace_count;
     this._editor.InsertBefore = true;
     this._editor.LinePos++;

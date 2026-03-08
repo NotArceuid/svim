@@ -22,6 +22,4 @@ Recreation of the vi text editor in svelte
 ## Notes: 
 This is only a RECREATION of the vi text editor and not a 1 to 1 exact copy 
 don't expect your favourite mystical keybindings to work as it would on vi.
-
-Also this absolutely sucks
-
+Also this absolutely sucks and full of edge cases i can't seem to solve

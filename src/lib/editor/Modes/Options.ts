@@ -104,13 +104,16 @@ export class OptionMode implements IEditorModes {
     }
     if (this.matches_movement(motion[1]))
       this._normal.delete();
+
     this._visual.start_track();
     if (!this.get_motion(motion[1]))
       return false;
+
     this._visual.delete();
     this._visual.end_track();
     this._visual.clear_buffer();
     this.OptionText = undefined;
+
     return true;
   }
 
@@ -121,23 +124,25 @@ export class OptionMode implements IEditorModes {
   private cursor_pos_cache: number = 0;
   public get_motion(key: string, off_one = false): boolean {
     const func = this._normalInputMap.get(key);
-    this._editor.State = EditorStateEnum.NORMAL;
+
     if (!func) {
       const clear_buffer = this._normalInputMap.get("Escape");
-      clear_buffer!();
+      clear_buffer?.();
       return false;
     }
-    let diff: Vector2 = {
-      x: this._editor.CursorPos - (off_one ? 0 : -1),
-      y: this._editor.LinePos
-    }
+
+    const before: Vector2 = {
+      x: this._editor.CursorPos,
+      y: this._editor.LinePos,
+    };
 
     func();
 
     this._visual.update_buffer({
-      x: this._editor.CursorPos - diff.x,
-      y: this._editor.LinePos - diff.y
+      x: this._editor.CursorPos - before.x + (off_one ? 0 : -1),
+      y: this._editor.LinePos - before.y,
     });
+
     return true;
   }
 }

@@ -1,6 +1,6 @@
 import { type Editor } from "../Editor.svelte.ts";
 import { Settings } from "../Settings.ts";
-import { BufferTypeEnum } from "../Structs/GapBuffer.svelte.ts";
+import { BufferTypeEnum, GapBuffer } from "../Structs/GapBuffer.svelte.ts";
 import type { Vector2, VisualBufferRange } from "../Structs/Vector2.svelte.ts";
 import { EditorStateEnum, type IEditorModes } from "./EditorModes.ts";
 
@@ -89,51 +89,79 @@ export class VisualMode implements IEditorModes {
   // holy fuck this took me so long to impleemnt
   public delete(x: boolean = false): void {
     const range = this._editor.GetVisualBufferRange();
-    if (range.start.x === range.end.x && range.start.y === range.end.y && !x) return;
 
-    const copied_text = { val: "" };
-    range.start.y === range.end.y
-      ? this.delete_within(range, copied_text)
-      : this.delete_multiline(range, copied_text);
-
-    if (Settings.SaveToClipboard) navigator.clipboard.writeText(copied_text.val);
-    this._editor.TextBuffer = copied_text.val;
-
-    const targetLine = this._editor.Text.elementAtPos(range.start.y)
-      ?? this._editor.Text.elementAtPos(0)!;
-    this._editor.CurrentLine = targetLine;
-    this._editor.LinePos = range.start.y;
-    this._editor.CursorPos = range.start.x;
-
-    if (this._editor.Text.elementAtPos(0)?.value.Span === "") {
-      this._editor.Text.deleteHead();
-      this._editor.LinePos = Math.max(0, this._editor.LinePos - 1);
-      this._editor.CurrentLine = this._editor.Text.elementAtPos(this._editor.LinePos)!;
+    if (!x && range.start.x === range.end.x && range.start.y === range.end.y) {
+      return;
     }
 
-    this._editor.CurrentLine = this._editor.Text.elementAtPos(this._editor.LinePos)!;
+    const copied_text = { val: "" };
+
+    if (range.start.y === range.end.y) {
+      this.delete_within(range, copied_text);
+    } else {
+      this.delete_multiline(range, copied_text);
+    }
+
+    if (Settings.SaveToClipboard) {
+      navigator.clipboard.writeText(copied_text.val);
+    }
+
+    this._editor.TextBuffer = copied_text.val;
+
+    if (!this._editor.Text.elementAtPos(0)) {
+      this._editor.Text.append(new GapBuffer(' \n'));
+      this._editor.seekTo(0, 0);
+      this._editor.State = EditorStateEnum.NORMAL;
+      return;
+    }
+
+    const lastLine = this._editor.Text.length - 1;
+    const targetY = Math.min(range.start.y, lastLine);
+    const targetLine = this._editor.Text.elementAtPos(targetY)!;
+
+    const lineLen = Math.max(0, (targetLine.value.Span.length ?? 1) - 1);
+    const targetX = Math.min(range.start.x, lineLen);
+
+    this._editor.seekTo(targetY, targetX);
     this._editor.State = EditorStateEnum.NORMAL;
   }
 
   private delete_multiline(range: VisualBufferRange, copied_text: { val: string }): void {
-    const first = this._editor.Text.elementAtPos(range.start.y)!;
-    const is_head = first.value === this._editor.Text.elementAtPos(0)?.value;
+    const first = this._editor.Text.elementAtPos(range.start.y);
+    if (!first) return;
 
+    const is_head = first.value === this._editor.Text.elementAtPos(0)?.value;
     first.value.CreateBufferAt(range.start.x, BufferTypeEnum.SPLITRIGHT);
     copied_text.val += first.value.ActiveZone;
     first.value.UpdateActiveZone("");
     first.value.SaveBuffer();
 
-    let curr_node = first.next!;
+    let curr_node = first.next;
+    if (!curr_node) {
+      first.value.CreateBufferAt(range.start.x, BufferTypeEnum.SPLITRIGHT);
+      first.value.UpdateActiveZone("\n");
+      first.value.SaveBuffer();
+      return;
+    }
+
     const middleCount = range.end.y - range.start.y - 1;
     for (let i = 0; i < middleCount; i++) {
-      copied_text.val += curr_node.value.Span;
-      const next = curr_node.next!;
-      curr_node.delete();
+      if (!curr_node!.next) break;
+      copied_text.val += curr_node!.value.Span;
+      const next: any = curr_node!.next;
+      curr_node!.delete();
+      this._editor.Text.length--;
       curr_node = next;
     }
 
     const last = curr_node;
+    if (!last) {
+      first.value.CreateBufferAt(range.start.x, BufferTypeEnum.SPLITRIGHT);
+      first.value.UpdateActiveZone("\n");
+      first.value.SaveBuffer();
+      return;
+    }
+
     last.value.CreateBufferAt(range.end.x + 1, BufferTypeEnum.SPLITLEFT);
     copied_text.val += last.value.ActiveZone;
     const suffix = last.value.BufferRight ?? "";
@@ -145,6 +173,7 @@ export class VisualMode implements IEditorModes {
     first.value.SaveBuffer();
 
     last.delete();
+    this._editor.Text.length--;
 
     if (is_head && range.start.x === 0 && first.value.Span === "\n") {
       this._editor.Text.deleteHead();

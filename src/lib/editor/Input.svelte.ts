@@ -96,7 +96,7 @@ export class InputMapper {
     this.set("n", "ge", () => this.Normal.go_back_word(false, true));
     this.set("n", "B", () => this.Normal.go_back_word(true, false));
     this.set("n", "gE", () => this.Normal.go_back_word(false, false));
-    this.set("n", "G", () => this.Normal.go_bottom());
+    this.set("n", "G", () => { this.Normal.go_bottom(); });
     this.set("n", "gg", () => this.Normal.go_top());
     this.set("n", "f", () => this.Normal.find());
     this.set("n", "F", () => this.Normal.find_backwards());
@@ -196,20 +196,10 @@ export class InputMapper {
     }
   }
 
-  private HandleOptionMode(key: string) {
-    if (this.Option.OptionText?.[0]) {
-      this.Option.OptionText.push(key);
-      this.Option.fire_motion();
-      return;
-    }
-
-    const func = this.CurrentInputMap.get(key);
-    if (!func) {
-      this.InputBuffer = "";
-      return;
-    }
-
-    func();
+  private HandleInsertMode(key: string) {
+    this.Insert.update_ln_buffer(key);
+    if (this.Macros.ActiveMacro)
+      this.Macros.push(key);
   }
 
   private HandleNormalMode(key: string) {
@@ -270,16 +260,37 @@ export class InputMapper {
     return false;
   }
 
+  private HandleOptionMode(key: string) {
+    if (this.Option.OptionText?.[0]) {
+      this.Option.OptionText.push(key);
+      this.Macros.push(key);
+      this.Option.fire_motion();
+      // fire_motion clears OptionText when done — only exit OPTION when it's cleared
+      if (!this.Option.OptionText) {
+        this._editor.State = EditorStateEnum.NORMAL;
+      }
+      return;
+    }
+
+    const func = this.CurrentInputMap.get(key);
+    if (!func) {
+      this.InputBuffer = "";
+      this._editor.State = EditorStateEnum.NORMAL;
+      return;
+    }
+
+    func();
+  }
+
   private TryOption(key: string): boolean {
     if ((key === 'd' || key === 'c' || key === 'y')
       && !this.Option.OptionText
       && this._editor.State === EditorStateEnum.NORMAL
-      && !this.Visual.Tracking) {  // ← add this guard
+      && !this.Visual.Tracking) {
+      this.Macros.push(key); // record BEFORE state change
       this._editor.State = EditorStateEnum.OPTION;
       const func = this.CurrentInputMap.get(key);
-      if (func) {
-        func();
-      }
+      func?.();
       return true;
     }
     return false;
@@ -303,12 +314,6 @@ export class InputMapper {
     return false;
   }
 
-  private HandleInsertMode(key: string) {
-    this.Insert.update_ln_buffer(key);
-    if (this.Macros.ActiveMacro)
-      this.Macros.push(key);
-  }
-
   private HandleVisualMode(key: string) {
     let action = this.CurrentInputMap.get(key);
     action?.();
@@ -318,62 +323,60 @@ export class InputMapper {
     }
   }
 
+
   private TryMultiAction(): Vector2 {
-    let count = this.InputBuffer.match("[0-9]*");
-    let cursor_dif: Vector2 = {
-      x: this._editor.CursorPos,
-      y: this._editor.LinePos
-    }
+    const count = this.InputBuffer.match("[0-9]*");
+    const cursor_dif: Vector2 = { x: this._editor.CursorPos, y: this._editor.LinePos };
 
     if (count?.[0] === "") {
-      this.SingleAction(cursor_dif);
+      this.SingleAction();
     } else if (count) {
-      this.MultiAction(cursor_dif, count);
+      this.MultiAction(count);
     }
 
+    cursor_dif.x = this._editor.CursorPos - cursor_dif.x;
+    cursor_dif.y = this._editor.LinePos - cursor_dif.y;
     return cursor_dif;
   }
 
-  private SingleAction(cursor_dif: Vector2) {
+  private SingleAction() {
     if (this.Macros.BeforePlay) {
       this.Macros.play_macro(this.InputBuffer.charAt(this.InputBuffer.length - 1));
+      this.Macros.BeforePlay = false;
+      this.InputBuffer = "";
       return;
     }
 
-    let func = this.NormalInputMap.get(this.InputBuffer);
+    const func = this.NormalInputMap.get(this.InputBuffer);
     if (func) {
       this.Macros.push(this.InputBuffer);
       func();
-      cursor_dif.x = this._editor.CursorPos - cursor_dif.x;
-      cursor_dif.y = this._editor.LinePos - cursor_dif.y;
-
       this.InputBuffer = "";
     }
   }
 
-  private MultiAction(cursor_dif: Vector2, count: string[]) {
-    let char = this.InputBuffer.slice(count[0].length, this.InputBuffer.length);
-    if (this.InputBuffer.endsWith('@')) {
-      return;
-    }
+  private MultiAction(count: string[]) {
+    if (this.InputBuffer.endsWith('@')) return;
+
+    const char = this.InputBuffer.slice(count[0].length);
+    const n = Number(count[0]);
 
     if (this.Macros.BeforePlay) {
-      let char = this.InputBuffer.charAt(this.InputBuffer.length - 1);
-      for (let i = 0; i < Number(count[0]); i++) {
-        this.Macros.play_macro(char);
+      const macroKey = this.InputBuffer.charAt(this.InputBuffer.length - 1);
+      for (let i = 0; i < n; i++) {
+        this.Macros.play_macro(macroKey);
       }
-
+      this.Macros.BeforePlay = false;
+      this.InputBuffer = "";
       return;
     }
 
-    let func = this.NormalInputMap.get(char);
+    const func = this.NormalInputMap.get(char);
     if (func) {
-      for (let i = 0; i < Number(count[0]); i++) {
+      for (let i = 0; i < n; i++) {
         func();
-        this.Macros.push(this.InputBuffer);
-        cursor_dif.x = this._editor.CursorPos - cursor_dif.x;
-        cursor_dif.y = this._editor.LinePos - cursor_dif.y;
       }
+      this.Macros.push(this.InputBuffer);
     }
 
     this.InputBuffer = "";

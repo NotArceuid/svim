@@ -2,26 +2,15 @@
   import Editor from "$lib/editor/Editor.svelte";
   import "../app.css";
 
-  const text = `public set(mode: string, key: string, action: () => void) {
-    switch (mode) {
-      case 'n':
-        this.NormalInputMap.set(key, action);
-        break;
-      case 'i':
-        this.InsertInputMap.set(key, action);
-        break;
-      case 'v':
-        this.VisualInputMap.set(key, action);
-        break;
-      case 'o':
-        this.OptionInputMap.set(key, action);
-        break;
-      case 't':
-        console.log("not implemented lol")
-        break;
-    }
-  }
- `;
+  const text = `Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Morbi finibus, elit non scelerisque consequat, massa orci molestie nisl, in cursus leo elit eu ligula.
+Praesent vehicula massa nec rutrum efficitur.
+Maecenas nulla leo, rhoncus id neque id, tincidunt maximus odio.
+Suspendisse sed vehicula justo.
+Maecenas finibus fermentum consectetur.
+Sed vel sem convallis lacus iaculis interdum id at est.
+Nunc ac elit eu mi scelerisque molestie.
+`;
 </script>
 
 <div>

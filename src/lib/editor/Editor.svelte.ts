@@ -19,10 +19,6 @@ export class Editor {
     return this._linePos;
   }
 
-  public get ActiveMacro(): RecordingMacro | undefined {
-    return this._inputMapper.Macros.ActiveMacro;
-  }
-
   public set LinePos(val: number) {
     let num_diff = val - this.LinePos;
     for (let i = 0; i < Math.abs(this.LinePos - val); i++) {
@@ -37,6 +33,28 @@ export class Editor {
     }
 
     this._linePos = val;
+  }
+
+  public seekTo(line: number, col: number): void {
+    const head = this.Text.elementAtPos(0);
+    if (!head) return;
+
+    this.CurrentLine = head;
+    this._linePos = 0;
+
+    const clamped = Math.min(line, this.Text.length - 1);
+    this.LinePos = clamped;
+
+    if (!this.CurrentLine) {
+      this.CurrentLine = head;
+      this._linePos = 0;
+    }
+
+    this.CursorPos = col;
+  }
+
+  public get ActiveMacro(): RecordingMacro | undefined {
+    return this._inputMapper.Macros.ActiveMacro;
   }
 
   public get VisualBufferStart() {
