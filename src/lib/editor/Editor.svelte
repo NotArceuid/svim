@@ -3,7 +3,10 @@
   import { TextEditor } from "./Editor.svelte.ts";
   import { EditorStateEnum } from "./Modes/EditorModes.ts";
   import { Settings } from "./Settings.ts";
-  import { BufferTypeEnum } from "./Structs/GapBuffer.svelte.ts";
+  import { BufferTypeEnum, GapBuffer } from "./Structs/GapBuffer.svelte.ts";
+  import type { LinkedList } from "./Structs/LinkedList.svelte.ts";
+
+  let { text = $bindable<LinkedList<GapBuffer>>() } = $props();
 
   function should_highlight(line_pos: number, char_pos: number): boolean {
     const range = TextEditor.GetVisualBufferRange();
@@ -42,6 +45,7 @@
   }
 
   onMount(() => {
+    TextEditor.SetText(text);
     document.addEventListener("keydown", (ev) => TextEditor.MapInput(ev));
   });
 </script>

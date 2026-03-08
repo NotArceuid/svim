@@ -89,26 +89,26 @@ export class VisualMode implements IEditorModes {
   // holy fuck this took me so long to impleemnt
   public delete(x: boolean = false): void {
     const range = this._editor.GetVisualBufferRange();
-    if (range.start.x === range.end.x && range.start.y === range.end.y && !x) {
-      return;
-    }
+    if (range.start.x === range.end.x && range.start.y === range.end.y && !x) return;
 
     const copied_text = { val: "" };
+    range.start.y === range.end.y
+      ? this.delete_within(range, copied_text)
+      : this.delete_multiline(range, copied_text);
 
-    range.start.y === range.end.y ?
-      this.delete_within(range, copied_text) :
-      this.delete_multiline(range, copied_text);
-
-    if (Settings.SaveToClipboard)
-      navigator.clipboard.writeText(copied_text.val);
-
+    if (Settings.SaveToClipboard) navigator.clipboard.writeText(copied_text.val);
     this._editor.TextBuffer = copied_text.val;
-    this._editor.CursorPos = range.start.x < range.end.x ? range.start.x : range.end.x;
-    this._editor.LinePos = this._editor.LinePos >= range.start.y ? range.start.y : range.end.y;
+
+    const targetLine = this._editor.Text.elementAtPos(range.start.y)
+      ?? this._editor.Text.elementAtPos(0)!;
+    this._editor.CurrentLine = targetLine;
+    this._editor.LinePos = range.start.y;
+    this._editor.CursorPos = range.start.x;
 
     if (this._editor.Text.elementAtPos(0)?.value.Span === "") {
       this._editor.Text.deleteHead();
-      this._editor.CurrentLine = this._editor.Text.elementAtPos(this._editor.LinePos - 1)!;
+      this._editor.LinePos = Math.max(0, this._editor.LinePos - 1);
+      this._editor.CurrentLine = this._editor.Text.elementAtPos(this._editor.LinePos)!;
     }
 
     this._editor.CurrentLine = this._editor.Text.elementAtPos(this._editor.LinePos)!;
@@ -116,52 +116,44 @@ export class VisualMode implements IEditorModes {
   }
 
   private delete_multiline(range: VisualBufferRange, copied_text: { val: string }): void {
-    const text = this._editor.Text.elementAtPos(Math.min(range.start.y, range.end.y))!;
-    const is_head = text.value === this._editor.Text.elementAtPos(0)?.value!;
+    const first = this._editor.Text.elementAtPos(range.start.y)!;
+    const is_head = first.value === this._editor.Text.elementAtPos(0)?.value;
 
-    const first = text;
-    let curr_node = first.next!;
     first.value.CreateBufferAt(range.start.x, BufferTypeEnum.SPLITRIGHT);
     copied_text.val += first.value.ActiveZone;
     first.value.UpdateActiveZone("");
     first.value.SaveBuffer();
 
-    for (let i = 1; i < range.end.y - range.start.y; i++) {
+    let curr_node = first.next!;
+    const middleCount = range.end.y - range.start.y - 1;
+    for (let i = 0; i < middleCount; i++) {
       copied_text.val += curr_node.value.Span;
+      const next = curr_node.next!;
       curr_node.delete();
-      curr_node = curr_node.next!;
+      curr_node = next;
     }
 
     const last = curr_node;
     last.value.CreateBufferAt(range.end.x + 1, BufferTypeEnum.SPLITLEFT);
-    const buffer_right = last.value.BufferRight;
     copied_text.val += last.value.ActiveZone;
+    const suffix = last.value.BufferRight ?? "";
     last.value.UpdateActiveZone("");
+    last.value.SaveBuffer();
 
     first.value.CreateBufferAt(range.start.x, BufferTypeEnum.SPLITRIGHT);
-    if (first.value.Span === '\n' && !is_head) {
-      first.delete();
-    } else {
-      first.value.UpdateActiveZone(buffer_right === '' ? '\n' : buffer_right ?? '\n');
-      first.value.SaveBuffer();
+    first.value.UpdateActiveZone(suffix !== "" ? suffix : "\n");
+    first.value.SaveBuffer();
 
-      if (is_head && range.start.x === 0)
-        this._editor.Text.deleteHead();
+    last.delete();
+
+    if (is_head && range.start.x === 0 && first.value.Span === "\n") {
+      this._editor.Text.deleteHead();
     }
-
-    last.value.SaveBuffer();
-    if (range.start.x !== 0)
-      last.delete();
   }
 
-
   private delete_within(range: VisualBufferRange, copied_text: { val: string }): void {
-    let val = this._editor.Text.elementAtPos(Math.min(range.start.y, range.end.y))!;
-    val.value.CreateBufferRegion(
-      Math.min(range.start.x, range.end.x),
-      Math.max(range.start.x, range.end.x) + 1
-    );
-
+    const val = this._editor.Text.elementAtPos(range.start.y)!;
+    val.value.CreateBufferRegion(range.start.x, range.end.x + 1);
     copied_text.val += val.value.ActiveZone;
     val.value.UpdateActiveZone("");
     val.value.SaveBuffer();

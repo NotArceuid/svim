@@ -64,17 +64,8 @@ export class Editor {
   }
 
   private _inputMapper: InputMapper;
-  constructor(text: string) {
-    let lines = text.split(/(?<=\n)/);
-    lines.forEach((line) => {
-      if (!line.endsWith('\n'))
-        line += '\n';
-
-      let buff_line = new GapBuffer(line);
-      this.Text.append(buff_line);
-    });
-
-    this.CurrentLine = $state(this.Text.head);
+  constructor() {
+    this.CurrentLine = $state(null);// here to make the compiler shutup
     this._inputMapper = new InputMapper(this)
   }
 
@@ -100,19 +91,20 @@ export class Editor {
   get InputBuffer() {
     return this._inputMapper.InputBuffer;
   }
+
+  public SetText(text: string) {
+    let lines = text.split(/(?<=\n)/);
+    lines.forEach((line) => {
+      if (!line.endsWith('\n'))
+        line += '\n';
+
+      let buff_line = new GapBuffer(line);
+      this.Text.append(buff_line);
+    });
+
+    this.CurrentLine = this.Text.head;
+
+  }
 }
 
-export const TextEditor = new Editor(`Lorem ipsum dolor sit amet adipiscing.
-    this.InputMap.set("h", () => this.Normal.left());
-    this.InputMap.set("j", () => this.Normal.down());
-    this.InputMap.set("k", () => this.Normal.up());
-    this.InputMap.set("l", () => this.Normal.right());
-    this.InputMap.set("$", () => this.Normal.end_line());
-    this.InputMap.set("0", () => this.Normal.start_line());
-    this.InputMap.set("w", () => this.Normal.go_start_word());
-    this.InputMap.set("e", () => this.Normal.go_end_word());
-    this.InputMap.set("W", () => this.Normal.go_start_WORD());
-    this.InputMap.set("E", () => this.Normal.go_end_WORD());
-    this.InputMap.set("b", () => this.Normal.bStart());
-    this.InputMap.set("ge", () => this.Normal.bEnd());
-ekrjekrljwe`);
+export const TextEditor = new Editor();

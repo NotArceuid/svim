@@ -64,7 +64,7 @@ export class InputMapper {
     this.set("v", "y", () => this.Visual.yank());
     this.set("v", "x", () => this.Visual.delete(true));
     this.set("v", "d", () => this.Visual.delete());
-    this.set("v", "c", () => this.Visual.delete());
+    this.set("v", "c", () => { this.Visual.delete(); this.Insert.insert_start() });
     this.set("v", "Escape", () => {
       this.Visual.clear_buffer();
       this.Visual.end_track();
@@ -142,8 +142,8 @@ export class InputMapper {
   }
 
   private RegisterOptionMods() {
-    this.set('o', "y", () => { this.Option.start_options('y'); this.InputBuffer = "" });
-    this.set('o', "d", () => { this.Option.start_options('d'); this.InputBuffer = "" });
+    this.set('o', "y", () => { this.InputBuffer = ""; { this.Option.start_options('y'); } });
+    this.set('o', "d", () => { this.InputBuffer = ""; this.Option.start_options('d'); });
     this.set('o', "c", () => { this.InputBuffer = ""; this.Option.start_options('c'); });
   }
 
@@ -195,6 +195,7 @@ export class InputMapper {
   }
 
   private HandleOptionMode(key: string) {
+    //    console.log(key)
     if (this.Option.OptionText?.[0]) {
       this.Option.OptionText.push(key);
       this.Option.fire_motion();
@@ -206,57 +207,84 @@ export class InputMapper {
       this.InputBuffer = "";
       return;
     }
+
     func();
   }
 
   private HandleNormalMode(key: string) {
+    if (this.TryFind(key)) return;
+    if (this.TryMacro(key)) return;
+    if (this.TryOption(key)) return;
+    if (this.TryOverride0(key)) return;
+
+    if (!key.match("[0-9]")) {
+      let diff = this.TryMultiAction();
+      if (this.Visual.Tracking)
+        this.Visual.update_buffer(diff);
+    }
+  }
+
+  private TryFind(key: string): boolean {
     if (this.Normal.IsFinding) {
       if (key === ";") {
         this.Normal.FindForwards ? this.Normal.next() : this.Normal.prev();
         this.InputBuffer = "";
-        return;
+        return true;
       }
       else if (key === ",") {
         this.Normal.FindForwards ? this.Normal.prev() : this.Normal.next();
         this.InputBuffer = "";
-        return;
+        return true;
       }
       else {
         this.Normal.FindChar = key;
         this.Normal.FindChar = this.Normal.FindChar.replace(/[.*+?^${}()|[\]\\]/, '\\$&');
         this.InputBuffer = "";
         this.Normal.FindForwards ? this.Normal.next() : this.Normal.prev();
-        return;
+        return true;
       }
     }
     else {
       this.Normal.stop_find();
     }
 
+    return false;
+  }
+
+  private TryMacro(key: string): boolean {
     if (this.Macros.IsMacroPrimed) {
       if (!key.match(/^\w$/))
-        return;
+        return true;
 
       this.Macros.create_macro(key);
       this.InputBuffer = "";
-      return;
+      return true;
     }
 
     if (key === "@") {
       this.Macros.BeforePlay = true;
-      return;
+      return true;
     }
 
-    if ((key === 'd' || key === 'c' || key === 'y') && !this.Option.OptionText) {
+    return false;
+  }
+
+  private TryOption(key: string): boolean {
+    if ((key === 'd' || key === 'c' || key === 'y')
+      && !this.Option.OptionText
+      && TextEditor.State === EditorStateEnum.NORMAL
+      && !this.Visual.Tracking) {  // ← add this guard
       TextEditor.State = EditorStateEnum.OPTION;
       const func = this.CurrentInputMap.get(key);
       if (func) {
         func();
       }
-
-      return;
+      return true;
     }
+    return false;
+  }
 
+  private TryOverride0(key: string): boolean {
     if (this.InputBuffer === "0") {
       let init_pos = TextEditor.CursorPos;
       let val = this.NormalInputMap.get("0");
@@ -268,14 +296,10 @@ export class InputMapper {
       }
 
       this.Macros.push(key);
-      return;
+      return true;
     }
 
-    if (!key.match("[0-9]")) {
-      let diff = this.TryMultiAction();
-      if (this.Visual.Tracking)
-        this.Visual.update_buffer(diff);
-    }
+    return false;
   }
 
   private HandleInsertMode(key: string) {

@@ -2,6 +2,7 @@ import { type Editor } from "../Editor.svelte.ts";
 import { Settings } from "../Settings.ts";
 import { BufferTypeEnum, GapBuffer } from "../Structs/GapBuffer.svelte.ts";
 import { LinkedListNode } from "../Structs/LinkedList.svelte.ts";
+import type { Vector2 } from "../Structs/Vector2.svelte.ts";
 import { EditorStateEnum, type IEditorModes } from "./EditorModes.ts";
 
 export class NormalMode implements IEditorModes {
@@ -66,6 +67,10 @@ export class NormalMode implements IEditorModes {
 
     this._editor.LinePos++;
     this._editor.CursorPos = Math.min(this._cursor_pos_ref, Math.max(0, next_len - 1));
+  }
+
+  public SetCursorPosRef(value: number) {
+    this._cursor_pos_ref = value;
   }
 
   /**
