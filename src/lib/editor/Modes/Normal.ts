@@ -73,105 +73,92 @@ export class NormalMode implements IEditorModes {
     this._cursor_pos_ref = value;
   }
 
+  private _ln_pos_cache?: number[];
   /**
-  * Moves the cursor to the start/end of the word/WORD backwards
+  * Moves the cursor to the start/end of the word/WORD forwards
   * @param start - Whether should go to start of word/WORD or end of word/WORD
   * @param word - Whether to search by word or WORD
   * */
   public go_word(start: boolean, word: boolean) {
     let curr_line = this._editor.Text.elementAtPos(this._editor.LinePos);
 
-    let regex = undefined;
+    let regex: RegExp;
     switch (true) {
-      case (start && word):
-        regex = Settings.WordRegexStart;
-        break;
-      case (!start && word):
-        regex = Settings.WordRegexEnd;
-        break;
-      case (start && !word):
-        regex = Settings.WORDRegexStart;
-        break;
-      case (!start && !word):
-        regex = Settings.WORDRegexEnd;
-        break;
+      case (start && word): regex = Settings.WordRegexStart; break;
+      case (!start && word): regex = Settings.WordRegexEnd; break;
+      case (start && !word): regex = Settings.WORDRegexStart; break;
+      default: regex = Settings.WORDRegexEnd;
     }
 
     let found = false;
     while (!found) {
       if (!curr_line) break;
 
-      let search_matches_iter = curr_line.value.Span.matchAll(regex!);
-      let search_matches: Array<RegExpExecArray> = new Array<RegExpExecArray>();
-      search_matches_iter.forEach((x) => {
-        if (x.index <= this._editor.CursorPos)
-          return;
+      let indices: number[];
+      if (this._ln_pos_cache?.[0] === this._editor.LinePos) {
+        indices = this._ln_pos_cache!.slice(1);
+      } else {
+        indices = [...curr_line.value.Span.matchAll(regex)].map(x => x.index);
+        this._ln_pos_cache = [this._editor.LinePos, ...indices];
+      }
 
-        search_matches.push(x);
-      })
+      const filtered = indices.filter(i => i > this._editor.CursorPos);
 
-      if (search_matches.length == 0) {
-        if (!curr_line?.next)
-          break;
-
+      if (filtered.length === 0) {
+        if (!curr_line.next) break;
         curr_line = curr_line.next;
         this._editor.LinePos++;
         this._editor.CursorPos = 0;
+        this._ln_pos_cache = undefined;
         continue;
       }
 
-      this._editor.CursorPos = search_matches[0].index;
+      this._editor.CursorPos = filtered[0];
       this._cursor_pos_ref = this._editor.CursorPos;
       found = true;
     }
   }
 
   /**
-  * Moves the cursor to the start/end of the word/WORD forwards
+  * Moves the cursor to the start/end of the word/WORD backwards
   * @param start - Whether should go to start of word/WORD or end of word/WORD
   * @param word - Whether to search by word or WORD
   * */
   public go_back_word(start: boolean, word: boolean) {
     let curr_line = this._editor.Text.elementAtPos(this._editor.LinePos);
 
-    let regex = undefined;
+    let regex: RegExp;
     switch (true) {
-      case (start && word):
-        regex = Settings.WordRegexStart;
-        break;
-      case (!start && word):
-        regex = Settings.WordRegexEnd;
-        break;
-      case (start && !word):
-        regex = Settings.WORDRegexStart;
-        break;
-      case (!start && !word):
-        regex = Settings.WORDRegexEnd;
-        break;
+      case (start && word): regex = Settings.WordRegexStart; break;
+      case (!start && word): regex = Settings.WordRegexEnd; break;
+      case (start && !word): regex = Settings.WORDRegexStart; break;
+      default: regex = Settings.WORDRegexEnd;
     }
 
     let found = false;
     while (!found) {
-      let search_matches_iter = curr_line?.value.Span.matchAll(regex!);
-      let search_matches: Array<RegExpExecArray> = new Array<RegExpExecArray>();
-      search_matches_iter?.forEach((x) => {
-        if (x.index >= this._editor.CursorPos)
-          return;
+      if (!curr_line) break;
 
-        search_matches.push(x);
-      })
+      let indices: number[];
+      if (this._ln_pos_cache?.[0] === this._editor.LinePos) {
+        indices = this._ln_pos_cache!.slice(1);
+      } else {
+        indices = [...curr_line.value.Span.matchAll(regex)].map(x => x.index);
+        this._ln_pos_cache = [this._editor.LinePos, ...indices];
+      }
 
-      if (search_matches.length == 0) {
-        if (!curr_line?.prev) break;
+      const filtered = indices.filter(i => i < this._editor.CursorPos);
 
+      if (filtered.length === 0) {
+        if (!curr_line.prev) break;
         curr_line = curr_line.prev;
-
         this._editor.LinePos--;
         this._editor.CursorPos = curr_line.value.Span.length;
+        this._ln_pos_cache = undefined;
         continue;
       }
 
-      this._editor.CursorPos = search_matches[search_matches.length - 1].index;
+      this._editor.CursorPos = filtered[filtered.length - 1];
       this._cursor_pos_ref = this._editor.CursorPos;
       found = true;
     }
@@ -230,37 +217,38 @@ export class NormalMode implements IEditorModes {
 
   public FindChar: string | undefined;
   public FindForwards?: boolean;
+  private _ln_find_pos_cache?: number[];
   // ;
   public next() {
-    if (!this.IsFinding || !this.FindChar)
-      return;
+    if (!this.IsFinding || !this.FindChar) return;
 
     let curr_line = this._editor.Text.elementAtPos(this._editor.LinePos);
-    let regex = new RegExp(this.FindChar, 'g');
+    const regex = new RegExp(this.FindChar, 'g');
+
     let found = false;
     while (!found) {
       if (!curr_line) break;
 
-      let search_matches_iter = curr_line.value.Span.matchAll(regex!);
-      let search_matches: Array<RegExpExecArray> = new Array<RegExpExecArray>();
-      search_matches_iter.forEach((x) => {
-        if (x.index <= this._editor.CursorPos)
-          return;
+      let indices: number[];
+      if (this._ln_find_pos_cache?.[0] === this._editor.LinePos) {
+        indices = this._ln_find_pos_cache!.slice(1);
+      } else {
+        indices = [...curr_line.value.Span.matchAll(regex)].map(x => x.index);
+        this._ln_find_pos_cache = [this._editor.LinePos, ...indices];
+      }
 
-        search_matches.push(x);
-      })
+      const filtered = indices.filter(i => i > this._editor.CursorPos);
 
-      if (search_matches.length == 0) {
-        if (!curr_line?.next)
-          break;
-
+      if (filtered.length === 0) {
+        if (!curr_line.next) break;
         curr_line = curr_line.next;
         this._editor.LinePos++;
         this._editor.CursorPos = 0;
+        this._ln_find_pos_cache = undefined;
         continue;
       }
 
-      this._editor.CursorPos = search_matches[0].index;
+      this._editor.CursorPos = filtered[0];
       this._cursor_pos_ref = this._editor.CursorPos;
       found = true;
     }
@@ -268,34 +256,35 @@ export class NormalMode implements IEditorModes {
 
   // ,
   public prev() {
-    if (!this.IsFinding || !this.FindChar)
-      return;
+    if (!this.IsFinding || !this.FindChar) return;
+
+    let curr_line = this._editor.CurrentLine;
+    const regex = new RegExp(this.FindChar, 'g');
 
     let found = false;
-    let curr_line = this._editor.CurrentLine;
-
-    const regex = new RegExp(this.FindChar, 'g');
     while (!found) {
-      let search_matches_iter = curr_line?.value.Span.matchAll(regex!);
-      let search_matches: Array<RegExpExecArray> = new Array<RegExpExecArray>();
-      search_matches_iter?.forEach((x) => {
-        if (x.index >= this._editor.CursorPos)
-          return;
+      if (!curr_line) break;
 
-        search_matches.push(x);
-      })
+      let indices: number[];
+      if (this._ln_find_pos_cache?.[0] === this._editor.LinePos) {
+        indices = this._ln_find_pos_cache!.slice(1);
+      } else {
+        indices = [...curr_line.value.Span.matchAll(regex)].map(x => x.index);
+        this._ln_find_pos_cache = [this._editor.LinePos, ...indices];
+      }
 
-      if (search_matches.length == 0) {
-        if (!curr_line?.prev) break;
+      const filtered = indices.filter(i => i < this._editor.CursorPos);
 
+      if (filtered.length === 0) {
+        if (!curr_line.prev) break;
         curr_line = curr_line.prev;
-
         this._editor.LinePos--;
         this._editor.CursorPos = curr_line.value.Span.length;
+        this._ln_find_pos_cache = undefined;
         continue;
       }
 
-      this._editor.CursorPos = search_matches[search_matches.length - 1].index;
+      this._editor.CursorPos = filtered[filtered.length - 1];
       this._cursor_pos_ref = this._editor.CursorPos;
       found = true;
     }
