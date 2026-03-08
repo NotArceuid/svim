@@ -1,6 +1,8 @@
 # svim 
 Recreation of the vi text editor in svelte 
 
+[Live Demo](https://notarceuid.github.io/svim)
+
 ## Supported Features
 - Normal mode 
 - Insert mode 
