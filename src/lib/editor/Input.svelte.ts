@@ -265,7 +265,6 @@ export class InputMapper {
       this.Option.OptionText.push(key);
       this.Macros.push(key);
       this.Option.fire_motion();
-      // fire_motion clears OptionText when done — only exit OPTION when it's cleared
       if (!this.Option.OptionText) {
         this._editor.State = EditorStateEnum.NORMAL;
       }
