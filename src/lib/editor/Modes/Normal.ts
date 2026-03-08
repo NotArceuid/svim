@@ -95,11 +95,13 @@ export class NormalMode implements IEditorModes {
       if (!curr_line) break;
 
       let indices: number[];
-      if (this._ln_pos_cache?.[0] === this._editor.LinePos) {
-        indices = this._ln_pos_cache!.slice(1);
+      if (this._ln_pos_cache?.[0] === this._editor.LinePos &&
+        this._ln_pos_cache?.[1] === curr_line.value.Span.length) {
+        indices = this._ln_pos_cache!.slice(2);
       } else {
-        indices = [...curr_line.value.Span.matchAll(regex)].map(x => x.index);
-        this._ln_pos_cache = [this._editor.LinePos, ...indices];
+        const span = curr_line.value.Span;
+        indices = [...span.matchAll(regex)].map(x => x.index);
+        this._ln_pos_cache = [this._editor.LinePos, span.length, ...indices];
       }
 
       const filtered = indices.filter(i => i > this._editor.CursorPos);
@@ -114,7 +116,7 @@ export class NormalMode implements IEditorModes {
       }
 
       this._editor.CursorPos = filtered[0];
-      this._cursor_pos_ref = this._editor.CursorPos;
+      this._cursor_pos_ref = filtered[0];
       found = true;
     }
   }
@@ -140,11 +142,13 @@ export class NormalMode implements IEditorModes {
       if (!curr_line) break;
 
       let indices: number[];
-      if (this._ln_pos_cache?.[0] === this._editor.LinePos) {
-        indices = this._ln_pos_cache!.slice(1);
+      if (this._ln_pos_cache?.[0] === this._editor.LinePos &&
+        this._ln_pos_cache?.[1] === curr_line.value.Span.length) {
+        indices = this._ln_pos_cache!.slice(2);
       } else {
-        indices = [...curr_line.value.Span.matchAll(regex)].map(x => x.index);
-        this._ln_pos_cache = [this._editor.LinePos, ...indices];
+        const span = curr_line.value.Span;
+        indices = [...span.matchAll(regex)].map(x => x.index);
+        this._ln_pos_cache = [this._editor.LinePos, span.length, ...indices];
       }
 
       const filtered = indices.filter(i => i < this._editor.CursorPos);
@@ -157,9 +161,8 @@ export class NormalMode implements IEditorModes {
         this._ln_pos_cache = undefined;
         continue;
       }
-
       this._editor.CursorPos = filtered[filtered.length - 1];
-      this._cursor_pos_ref = this._editor.CursorPos;
+      this._cursor_pos_ref = filtered[filtered.length - 1];
       found = true;
     }
   }

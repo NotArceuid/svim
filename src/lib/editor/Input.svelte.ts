@@ -197,7 +197,6 @@ export class InputMapper {
   }
 
   private HandleOptionMode(key: string) {
-    //    console.log(key)
     if (this.Option.OptionText?.[0]) {
       this.Option.OptionText.push(key);
       this.Option.fire_motion();

@@ -72,6 +72,7 @@ export class OptionMode implements IEditorModes {
       this._visual.start_track();
       this.get_motion('$', true);
       this._visual.delete();
+      this._visual.end_track();
       this._insert.insert_start();
       this.OptionText = undefined;
       return true;
@@ -101,16 +102,22 @@ export class OptionMode implements IEditorModes {
       this.cursor_pos_cache = 0;
       return true;
     }
-
+    if (this.matches_movement(motion[1]))
+      this._normal.delete();
     this._visual.start_track();
     if (!this.get_motion(motion[1]))
       return false;
-
     this._visual.delete();
     this._visual.end_track();
+    this._visual.clear_buffer();
     this.OptionText = undefined;
     return true;
   }
+
+  private matches_movement(key: string) {
+    return key === 'w' || key === 'b' || key === 'e' || key === 'E' || key === 'W' || key === 'B' || key === 'gE';
+  }
+
   private cursor_pos_cache: number = 0;
   public get_motion(key: string, off_one = false): boolean {
     const func = this._normalInputMap.get(key);
@@ -124,6 +131,7 @@ export class OptionMode implements IEditorModes {
       x: this._editor.CursorPos - (off_one ? 0 : -1),
       y: this._editor.LinePos
     }
+
     func();
 
     this._visual.update_buffer({
