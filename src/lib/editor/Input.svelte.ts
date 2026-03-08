@@ -1,4 +1,4 @@
-import { TextEditor, type Editor } from "./Editor.svelte.ts";
+import { type Editor } from "./Editor.svelte.ts";
 import { Macros } from "./Macros.svelte.js";
 import { EditorStateEnum } from "./Modes/EditorModes.ts";
 import { InsertMode } from "./Modes/Insert.svelte.ts";
@@ -15,6 +15,7 @@ export class InputMapper {
   public Macros: Macros;
 
   private _inputBuffer: string = $state("");
+  private _editor: Editor;
   public set InputBuffer(val) {
     this._inputBuffer = val;
   }
@@ -29,6 +30,7 @@ export class InputMapper {
   private OptionInputMap = new Map<string, () => void>();
   private CurrentInputMap = this.NormalInputMap;
   constructor(editor: Editor) {
+    this._editor = editor;
     this.Normal = new NormalMode(editor);
     this.Insert = new InsertMode(editor);
     this.Visual = new VisualMode(editor);
@@ -115,7 +117,7 @@ export class InputMapper {
       this.Normal.start_line();
       this.Visual.start_track();
       this.Normal.end_line();
-      this.Visual.update_buffer({ x: TextEditor.CursorPos, y: 0 });
+      this.Visual.update_buffer({ x: this._editor.CursorPos, y: 0 });
       this.Visual.yank();
       this.Visual.end_track();
     });
@@ -178,7 +180,7 @@ export class InputMapper {
       this.Normal.stop_find();
     }
 
-    switch (TextEditor.State) {
+    switch (this._editor.State) {
       case EditorStateEnum.NORMAL:
         this.HandleNormalMode(key);
         break;
@@ -272,9 +274,9 @@ export class InputMapper {
   private TryOption(key: string): boolean {
     if ((key === 'd' || key === 'c' || key === 'y')
       && !this.Option.OptionText
-      && TextEditor.State === EditorStateEnum.NORMAL
+      && this._editor.State === EditorStateEnum.NORMAL
       && !this.Visual.Tracking) {  // ← add this guard
-      TextEditor.State = EditorStateEnum.OPTION;
+      this._editor.State = EditorStateEnum.OPTION;
       const func = this.CurrentInputMap.get(key);
       if (func) {
         func();
@@ -286,13 +288,13 @@ export class InputMapper {
 
   private TryOverride0(key: string): boolean {
     if (this.InputBuffer === "0") {
-      let init_pos = TextEditor.CursorPos;
+      let init_pos = this._editor.CursorPos;
       let val = this.NormalInputMap.get("0");
       val?.();
       this.InputBuffer = "";
 
-      if (TextEditor.State == EditorStateEnum.VISUAL) {
-        this.Visual.update_buffer({ x: TextEditor.CursorPos - init_pos, y: 0 });
+      if (this._editor.State == EditorStateEnum.VISUAL) {
+        this.Visual.update_buffer({ x: this._editor.CursorPos - init_pos, y: 0 });
       }
 
       this.Macros.push(key);
@@ -320,8 +322,8 @@ export class InputMapper {
   private TryMultiAction(): Vector2 {
     let count = this.InputBuffer.match("[0-9]*");
     let cursor_dif: Vector2 = {
-      x: TextEditor.CursorPos,
-      y: TextEditor.LinePos
+      x: this._editor.CursorPos,
+      y: this._editor.LinePos
     }
 
     if (count?.[0] === "") {
@@ -343,8 +345,8 @@ export class InputMapper {
     if (func) {
       this.Macros.push(this.InputBuffer);
       func();
-      cursor_dif.x = TextEditor.CursorPos - cursor_dif.x;
-      cursor_dif.y = TextEditor.LinePos - cursor_dif.y;
+      cursor_dif.x = this._editor.CursorPos - cursor_dif.x;
+      cursor_dif.y = this._editor.LinePos - cursor_dif.y;
 
       this.InputBuffer = "";
     }
@@ -370,8 +372,8 @@ export class InputMapper {
       for (let i = 0; i < Number(count[0]); i++) {
         func();
         this.Macros.push(this.InputBuffer);
-        cursor_dif.x = TextEditor.CursorPos - cursor_dif.x;
-        cursor_dif.y = TextEditor.LinePos - cursor_dif.y;
+        cursor_dif.x = this._editor.CursorPos - cursor_dif.x;
+        cursor_dif.y = this._editor.LinePos - cursor_dif.y;
       }
     }
 
