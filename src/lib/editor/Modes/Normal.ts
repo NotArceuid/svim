@@ -112,7 +112,7 @@ export class NormalMode implements IEditorModes {
       }
 
       this._editor.CursorPos = filtered[0];
-      this._cursor_pos_ref = filtered[0];
+ //     this._cursor_pos_ref = this._editor.CursorPos;
       found = true;
     }
   }
@@ -158,7 +158,7 @@ export class NormalMode implements IEditorModes {
         continue;
       }
       this._editor.CursorPos = filtered[filtered.length - 1];
-      this._cursor_pos_ref = filtered[filtered.length - 1];
+//      this._cursor_pos_ref = this._editor.CursorPos;
       found = true;
     }
   }
